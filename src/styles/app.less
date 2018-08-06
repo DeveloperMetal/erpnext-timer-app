@@ -1,0 +1,251 @@
+@import "~@blueprintjs/core/lib/css/blueprint.css";
+@import "~@blueprintjs/table/lib/css/table.css";
+@import "~@blueprintjs/icons/lib/css/blueprint-icons.css";
+
+html, body, #root {
+    width: 100%;
+    height: 100%;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+
+    &.bp3-dark {
+        background-color: #394b59;
+    }
+}
+
+#nav {
+    flex: 0 0 auto;
+    background-color: #394b59;
+
+    a:hover {
+        text-decoration: none;
+    }
+
+    .bp3-button {
+        outline: none;
+        transition: width 1s ease;
+
+        &:hover span {
+            text-decoration: none;
+        }
+
+        &.bp3-active {
+            color: white;
+            background-color: rgb(146, 177, 206);
+
+            &::after {
+                left: 100%;
+                top: 50%;
+                border: solid transparent;
+                content: " ";
+                height: 0;
+                width: 0;
+                position: absolute;
+                pointer-events: none;
+                border-color: rgba(0, 0, 0, 0);
+                border-left-color: rgb(146, 177, 206);
+                border-width: 10px;
+                margin-top: -10px;
+                outline: none;
+            }
+        }
+    }
+}
+
+#content {
+    flex: 1 1 auto;
+    position: relative;
+}
+
+.page {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 1em;
+    background-color: #f3f3f3;
+    overflow: hidden;
+    
+    > h1 {
+        margin-top: 0;
+    }
+}
+
+.dead-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.flex-fill {
+    flex: 1 1 auto;
+}
+
+.fade-enter {
+  opacity: 0;
+  z-index: 1;
+}
+
+.fade-enter.fade-enter-active {
+  opacity: 1;
+  transition: opacity 250ms ease-in;
+}
+
+.timesheet {
+    display: flex;
+    flex-direction: column;
+}
+
+.week-widget {
+    background-color: white;
+    border: 1px gray solid;
+    border-radius: 5px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+
+    .day-group {
+        display: flex;
+        flex-direction: row;
+        padding: 0;
+
+        > * {
+            border-right: 1px gray solid;
+            border-radius: 0;
+            margin: 0;
+        }
+
+        > *:last-child {
+            border-right: none;
+        }
+
+        .btn-nav {
+            flex: 0 0 auto;
+            border-right: 1px gray solid;
+
+        }
+
+        .day-column {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+
+            .days {
+                display: flex;
+                flex-direction: row;
+
+                > * {
+                    border-top: 1px gray solid;
+                    border-right: 1px gray solid;
+                    border-radius: 0;
+                    margin: 0;
+                }
+
+                > *:last-child {
+                    border-right: none;
+                }
+            }
+        }
+
+        .day {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+
+            .day-btn {
+                padding: .5em;
+                text-align: center;
+                border-radius: 0;
+
+                .bp3-button-text {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1 1 auto;
+                }
+            }
+
+            
+        }
+    }
+}
+
+.time-tracker {
+    flex: 1 1 auto;
+    border: 1px grey solid;
+    border-top: none;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow: auto;
+
+    > li {
+        padding: 1em;
+        margin: 0;
+        border-bottom: 1px grey solid;
+        display: flex;
+        flex-direction: column;
+
+        .wrap {
+            display: flex;
+            flex-direction: row;
+
+            .details {
+                flex: 1 1 auto;
+
+                .project {
+                    font-weight: bolder;
+                    color: rgb(74, 123, 216);
+                }
+
+                .title {
+                    font-weight: bolder;
+                }
+            }
+
+            .right-col {
+                display: flex;
+                flex-direction: column;
+                flex: 0 0 auto;
+                justify-content: center;
+
+                .actions {
+                    flex: 1 1 auto;
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: center;
+
+                    * {
+                        align-self: center;
+                    }
+                }
+
+                .time {
+                    font-size: .8em;
+                    font-weight: bold;
+                    flex: 0 0 auto;
+                    text-align: center;
+                }
+            }
+        }
+
+        &.active .wrap {
+            margin-bottom: .5em;
+        }
+    }
+
+    > li:last-child {
+        border-bottom: 0;
+    }
+
+    > li:nth-child(even) {
+        background: white;
+    }
+}
