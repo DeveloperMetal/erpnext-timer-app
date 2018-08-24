@@ -1,4 +1,4 @@
-# ERPNext Timesheet App
+# ERPNext Timesheet App (WIP)
 
 Custom time tracking app for ERPNext.
 
@@ -21,6 +21,31 @@ The following projects were used to build this app:
 To keep the app UI development loosely coupled to its backed, we've put all server CRUD operations in the ERPNext.js component and abstracted operations there. 
 
 The idea here is to have this connector return promises on all actions against the server.
+
+# Planned Implementation Details
+
+For this app to work a timesheet will be generated every day for it's user. This can be done either server side as required or app side if no timesheet is found for that day. 
+
+Tho, no timesheet would be generated without at least one task for that day.
+
+Tasks will be grouped by project so that user has to:
+
+1) Pick the project a task is being worked on
+2) Pick the task itself belonging to that project
+3) Or create tasks on the fly for the project as well.
+
+The app app should enforce only one active task at a time and display a custom timer on the OS's task tray icon.
+
+Also, by default if a timer was started every 10 minute desktop idle time the app will display a reminder that the task was left running.
+
+The idle reminder should give two options: 
+
+1) Remove X minutes of detected idle time and stop timer.
+2) or close reminder. Resetting idle timer check until next timeout.
+
+There should be a logout option in the settings page as well as the login widget.
+
+
 
 # TODO
 

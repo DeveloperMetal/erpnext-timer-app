@@ -19,7 +19,7 @@ export default class Login extends React.PureComponent {
         host: this.state.host,
         usr: this.state.usr,
         pwd: this.state.pwd
-      })
+      });
     }
   }
 

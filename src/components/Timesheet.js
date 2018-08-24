@@ -71,6 +71,7 @@ const TimeEntry = ({ project, title, message, minutes, isActive, onPlayClick, on
     <div className="wrap">
 
       <div className="details">
+      
         <div className="project"><Icon icon="projects" /> {project}</div>
         <div className="title"><Icon icon="tag" /> {title}</div>
         <div className="message"><Icon icon="comment" /> {message}</div>
@@ -177,9 +178,9 @@ export default class Timesheet extends React.PureComponent {
 
   render() {
 
-    return (<div className="page timesheet">
+    return <div className="page timesheet">
       <WeekView date={this.state.date} onChange={this.handleDayChange.bind(this)} />
       <TimeTracker date={this.state.date} />
-    </div>);
+    </div>;
   }
 }

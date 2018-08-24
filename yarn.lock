@@ -43,6 +43,14 @@
     classnames "^2.2"
     tslib "^1.9.0"
 
+"@blueprintjs/select@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@blueprintjs/select/-/select-3.1.0.tgz#5ec50aa31cc852ff90fd1d3666c00b6c32c408ba"
+  dependencies:
+    "@blueprintjs/core" "^3.1.0"
+    classnames "^2.2"
+    tslib "^1.9.0"
+
 "@blueprintjs/table@^3.1.0":
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/@blueprintjs/table/-/table-3.1.0.tgz#91e737f1ff9d80639eb9a11f38418c5e389a6ef7"
@@ -2005,7 +2013,7 @@ class-utils@^0.3.5:
     isobject "^3.0.0"
     static-extend "^0.1.1"
 
-classnames@^2.2:
+classnames@^2.2, classnames@^2.2.6:
   version "2.2.6"
   resolved "https://registry.yarnpkg.com/classnames/-/classnames-2.2.6.tgz#43935bffdd291f326dad0a205309b38d00f650ce"
 

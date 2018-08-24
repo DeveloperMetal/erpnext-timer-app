@@ -1,19 +1,21 @@
 // --- app Framework
 import React from 'react'
-import { MemoryRouter, Route, NavLink, Switch } from "react-router-dom";
+import { MemoryRouter, Route, NavLink, Switch, Redirect } from "react-router-dom";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import { ipcRenderer } from 'electron';
 import axios from 'axios';
-import ErpNextConnector from './ErpNext';
+import ErpNextConnector, { ERPNextProvider, ERPNExtConsumer } from './ErpNext';
 
 // --- ui framework
-import { Button, ButtonGroup, Spinner, Intent } from "@blueprintjs/core";
+import { Button, ButtonGroup, Spinner, Intent, Alignment } from "@blueprintjs/core";
+import classNames from 'classnames';
 
 // --- Pages 
 import { AppToaster } from "./AppToaster";
 import Timesheet from "./Timesheet";
 import Settings from "./Settings";
 import Login from "./Login";
+import EditEntry from './EditEntry';
 
 export default class App extends React.Component {
 
@@ -25,13 +27,15 @@ export default class App extends React.Component {
       pwd: ipcRenderer.sendSync('getSetting', 'pwd'),
     };
 
+    this.backend = new ErpNextConnector();
+
     this.state = {
       displayNavText: false,
       lastIdle: 0,
       loggingIn: auth.host && auth.usr && auth.pwd,
       loggedIn: false,
       auth,
-      backend: new ErpNextConnector()
+      backend: this.backend
     }
 
     // queue up auto login, if fails it should display login page as default
@@ -137,40 +141,71 @@ export default class App extends React.Component {
    */
   renderApp(location) {
     const navProps = {
-      className: "bp3-dark",
       vertical: true,
       alignText: "left",
       large: true,
-      minimal: true
+      minimal: true,
+      className: classNames('bp3-dark', {'is-open': isNavOpen}),
+      id: "nav"
     }
+
+    const isNavOpen = this.state.displayNavText;
 
     const navText = (text) => {
       return this.state.displayNavText ? text : "";
     }
 
     const isPathActive = (match, location) => {
-      return location.pathname == match;
+      return location.pathname.match(match);
     }
 
     return (
       <div id="app">
 
-        <ButtonGroup id="nav" {...navProps} >
+        <ButtonGroup {...navProps} >
 
-          <Button text={navText("Navigation")} rightIcon={this.state.displayNavText ? "caret-left" : "caret-right"}
+          <Button 
+            text={navText("Navigation")} 
+            rightIcon={this.state.displayNavText ? "caret-left" : "caret-right"}
             onClick={() => {
               this.setState({ displayNavText: !this.state.displayNavText });
             }} />
 
-          <NavLink to="/">
-            <Button text={navText("Time Sheet")} icon="calendar" active={isPathActive("/", location)} />
-          </NavLink>
+          <ButtonGroup minimal vertical 
+            className={classNames(
+                'nav-item', 
+                { 
+                  'active': isPathActive(/^\/timesheet/, location)
+                }
+              )} 
+            >
+            <NavLink to="/timesheet">
+              <Button text={navText("Time Sheet")} icon="calendar" />
+            </NavLink>
+            {isPathActive("/timesheet", location) && (
+              <ButtonGroup minimal vertical className="inner">
+                <NavLink to="/timesheet/addEntry">
+                  <Button
+                    text={navText("New Entry")}
+                    icon="plus"
+                    alignText={ Alignment.RIGHT } />
+                </NavLink>
+              </ButtonGroup>
+            )}
+          </ButtonGroup>
 
           <div className="flex-fill" />
 
-          <NavLink to="/settings">
-            <Button text={navText("Settings")} icon="cog" active={isPathActive("/settings", location)} />
-          </NavLink>
+          <ButtonGroup minimal vertical 
+            className={ classNames(
+              'nav-item', 
+              { 
+                'active': isPathActive(/^\/settings/, location)
+              }) } >
+            <NavLink to="/settings">
+              <Button text={navText("Settings")} icon="cog" />
+            </NavLink>
+          </ButtonGroup>
 
         </ButtonGroup>
 
@@ -179,9 +214,10 @@ export default class App extends React.Component {
             <CSSTransition key={location.key} classNames="fade" timeout={300}>
               <Switch location={location}>
 
-                <Route path="/" exact component={Timesheet} />
+                <Route path="/timesheet/addEntry" exact component={EditEntry} />
+                <Route path="/timesheet" exact component={Timesheet} />
                 <Route path="/settings" exact component={Settings} />
-
+                
               </Switch>
             </CSSTransition>
           </TransitionGroup>
@@ -193,33 +229,41 @@ export default class App extends React.Component {
   render() {
     return (
       <MemoryRouter>
-        <Route
-          render={({ location }) => {
+        <ERPNextProvider value={ this.backend.adapter }>
+          <Route
+            render={({ location }) => {
 
-            // toggle between rendering the app or spiner if we are in the process of logging in.
-            if (this.state.loggedIn) {
-              return this.renderApp(location);
-            } else if ( this.state.loggingIn ) {
+              // toggle between rendering the app or spiner if we are in the process of logging in.
+              if (this.state.loggedIn) {
+                // default redirect to timesheet page if not set(due to login)
+                if ( location.pathname == '/' ) {
+                  return <Redirect to="/timesheet" />
+                } else {
+                  return this.renderApp(location);
+                }
+              } else if ( this.state.loggingIn ) {
+                // display spiner until login request completes
+                return <div id="app" className="bp3-dark">
+                  <div id="content">
+                    <div className="dead-center">
+                      <Spinner size={Spinner.SIZE_LARGE} />
+                    </div>
+                  </div>
+                </div>;
+              }
+
+              // else while not logged-in and not waiting to login, display login component
               return <div id="app" className="bp3-dark">
                 <div id="content">
                   <div className="dead-center">
-                    <Spinner size={Spinner.SIZE_LARGE} />
+                    <Login {...this.state.auth} onLoginAction={ this.handleLoginAction.bind(this) } />
                   </div>
                 </div>
               </div>;
             }
-
-            // else while not logged it and not waiting to login, display login component
-            return <div id="app" className="bp3-dark">
-              <div id="content">
-                <div className="dead-center">
-                  <Login {...this.state.auth} onLoginAction={ this.handleLoginAction.bind(this) } />
-                </div>
-              </div>
-            </div>;
           }
-        }
-        />
+          />
+        </ERPNextProvider>
       </MemoryRouter>
     )
   }
