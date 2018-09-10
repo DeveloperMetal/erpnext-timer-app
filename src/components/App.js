@@ -1,20 +1,19 @@
 // --- app Framework
 import React from 'react'
-import { MemoryRouter, Route, NavLink, Switch, Redirect } from "react-router-dom";
-import { TransitionGroup, CSSTransition } from "react-transition-group";
+import { MemoryRouter, Route, NavLink, Switch, Redirect } from 'react-router-dom';
+import { TransitionGroup, CSSTransition } from 'react-transition-group';
 import { ipcRenderer } from 'electron';
-import axios from 'axios';
-import ErpNextConnector, { ERPNextProvider, ERPNExtConsumer } from './ErpNext';
+import { BackendProvider, BackendConsumer } from '../connectors/Data';
 
 // --- ui framework
-import { Button, ButtonGroup, Spinner, Intent, Alignment } from "@blueprintjs/core";
+import { Button, ButtonGroup, Spinner, Intent, Alignment } from '@blueprintjs/core';
 import classNames from 'classnames';
 
 // --- Pages 
-import { AppToaster } from "./AppToaster";
-import Timesheet from "./Timesheet";
-import Settings from "./Settings";
-import Login from "./Login";
+import { AppToaster } from './AppToaster';
+import Timesheet from './Timesheet';
+import Settings from './Settings';
+import Login from './Login';
 import EditEntry from './EditEntry';
 
 export default class App extends React.Component {
@@ -27,41 +26,50 @@ export default class App extends React.Component {
       pwd: ipcRenderer.sendSync('getSetting', 'pwd'),
     };
 
-    this.backend = new ErpNextConnector();
+    this.backend = null;
 
     this.state = {
       displayNavText: false,
       lastIdle: 0,
       loggingIn: auth.host && auth.usr && auth.pwd,
       loggedIn: false,
-      auth,
-      backend: this.backend
+      auth
+    }
+  }
+
+  setBackend(backend) {
+    if (this.backend != null) {
+      return;
     }
 
+    // update our backend reference, from here on we can call our server.
+    this.backend = backend;
+
     // queue up auto login, if fails it should display login page as default
-    if ( auth.host && auth.usr && auth.pwd ) {
-      setTimeout(() => {
-        this.login()
+    if (this.state.auth.host && this.state.auth.usr && this.state.auth.pwd) {
+      this.login()
         .then(response => {
           this.setState({
             loggingIn: false,
-            loggedIn: true, 
+            loggedIn: true,
           });
           return response;
         })
         .catch(err => {
-          AppToaster.show({ 
-            icon: "globe-network",
+          console.error(err);
+          let errors = ['Error logging in with stored username and password.'];
+          errors.push(err.message);
+
+          AppToaster.show({
+            icon: 'globe-network',
             intent: Intent.DANGER,
-            message: "Error logging in with stored username and password. \nTODO: Parse request errors..." 
+            message: <div>{errors.map(e => <div key={e}>{e}</div>)}</div>
           });
           this.setState({
             loggingIn: false,
             loggedIn: false
           });
-          console.log("Failed auto login: ", err);
         })
-      }, 10);
     }
 
     setInterval(() => {
@@ -75,14 +83,15 @@ export default class App extends React.Component {
         lastIdle: arg
       });
     })
+
   }
 
   login(auth) {
-    if ( auth === undefined ) {
+    if (auth === undefined) {
       auth = this.state.auth;
     }
 
-    // wraps login into a promise so we can flag state as "logging in" and wait for page rendering
+    // wraps login into a promise so we can flag state as 'logging in' and wait for page rendering
     // before issuing actual remote login request.
     return new Promise((resolve) => {
       // update logging in state so we have a responsive app
@@ -90,7 +99,7 @@ export default class App extends React.Component {
         loggingIn: true
       }, () => {
         // after rendering, we issue the login request
-        let loginPromise = this.state.backend.login(auth)
+        let loginPromise = this.backend.login(auth)
           .then(response => {
             // upon success we update state again to disable spinner state.
             this.setState({
@@ -115,22 +124,21 @@ export default class App extends React.Component {
 
         // update rendering so we display main app
         this.setState({
-          loggedIn: true, 
+          loggedIn: true,
           auth
         });
 
         return response;
       })
       .catch(err => {
-        // TODO: check error status to provider proper reason for error
-        AppToaster.show({ 
-          icon: "globe-network",
+        AppToaster.show({
+          icon: 'globe-network',
           intent: Intent.DANGER,
-          message: "Unable to login. \nTODO: Parse request errors..." 
+          message: err.message
         });
         this.setState({
           loggingIn: false,
-          loggedIn: false 
+          loggedIn: false
         })
       });
   }
@@ -142,17 +150,17 @@ export default class App extends React.Component {
   renderApp(location) {
     const navProps = {
       vertical: true,
-      alignText: "left",
+      alignText: 'left',
       large: true,
       minimal: true,
-      className: classNames('bp3-dark', {'is-open': isNavOpen}),
-      id: "nav"
+      className: classNames('bp3-dark', { 'is-open': isNavOpen }),
+      id: 'nav'
     }
 
     const isNavOpen = this.state.displayNavText;
 
     const navText = (text) => {
-      return this.state.displayNavText ? text : "";
+      return this.state.displayNavText ? text : '';
     }
 
     const isPathActive = (match, location) => {
@@ -160,64 +168,66 @@ export default class App extends React.Component {
     }
 
     return (
-      <div id="app">
+      <div id='app'>
 
         <ButtonGroup {...navProps} >
 
-          <Button 
-            text={navText("Navigation")} 
-            rightIcon={this.state.displayNavText ? "caret-left" : "caret-right"}
+          <Button
+            text={navText('Navigation')}
+            rightIcon={this.state.displayNavText ? 'caret-left' : 'caret-right'}
             onClick={() => {
               this.setState({ displayNavText: !this.state.displayNavText });
             }} />
 
-          <ButtonGroup minimal vertical 
+          <ButtonGroup minimal vertical
             className={classNames(
-                'nav-item', 
-                { 
-                  'active': isPathActive(/^\/timesheet/, location)
-                }
-              )} 
-            >
-            <NavLink to="/timesheet">
-              <Button text={navText("Time Sheet")} icon="calendar" />
+              'nav-item',
+              {
+                'active': isPathActive(/^\/timesheet/, location)
+              }
+            )}
+          >
+            <NavLink to='/timesheet'>
+              <Button text={navText('Time Sheet')} icon='calendar' />
             </NavLink>
-            {isPathActive("/timesheet", location) && (
-              <ButtonGroup minimal vertical className="inner">
-                <NavLink to="/timesheet/addEntry">
+            {isPathActive('/timesheet', location) && (
+              <ButtonGroup minimal vertical className='inner'>
+                <NavLink to='/timesheet/addEntry'>
                   <Button
-                    text={navText("New Entry")}
-                    icon="plus"
-                    alignText={ Alignment.RIGHT } />
+                    text={navText('New Entry')}
+                    icon='plus'
+                    alignText={Alignment.RIGHT} />
                 </NavLink>
               </ButtonGroup>
             )}
           </ButtonGroup>
 
-          <div className="flex-fill" />
+          <div className='flex-fill' />
 
-          <ButtonGroup minimal vertical 
-            className={ classNames(
-              'nav-item', 
-              { 
+          <ButtonGroup minimal vertical
+            className={classNames(
+              'nav-item',
+              {
                 'active': isPathActive(/^\/settings/, location)
-              }) } >
-            <NavLink to="/settings">
-              <Button text={navText("Settings")} icon="cog" />
+              })} >
+            <NavLink to='/settings'>
+              <Button text={navText('Settings')} icon='cog' />
             </NavLink>
           </ButtonGroup>
 
         </ButtonGroup>
 
-        <div id="content">
+        <div id='content'>
           <TransitionGroup>
-            <CSSTransition key={location.key} classNames="fade" timeout={300}>
+            <CSSTransition key={location.key} classNames='fade' timeout={300}>
               <Switch location={location}>
 
-                <Route path="/timesheet/addEntry" exact component={EditEntry} />
-                <Route path="/timesheet" exact component={Timesheet} />
-                <Route path="/settings" exact component={Settings} />
-                
+                <Route path='/timesheet/addEntry' exact component={EditEntry} />
+                <Route path='/timesheet/:dayLog/:timeLog' exact component={EditEntry} />
+                <Route path='/timesheet/:dayLog' exact component={Timesheet} />
+                <Route path='/timesheet' exact component={Timesheet} />
+                <Route path='/settings' exact component={Settings} />
+
               </Switch>
             </CSSTransition>
           </TransitionGroup>
@@ -226,44 +236,56 @@ export default class App extends React.Component {
     );
   }
 
+  renderLoadShim() {
+    return <Route render={
+      ({ location }) => {
+        // toggle between rendering the app or spiner if we are in the process of logging in.
+        if (this.state.loggedIn) {
+          // default redirect to timesheet page if not set(due to login)
+          if (location.pathname == '/') {
+            return <Redirect to='/timesheet' />
+          } else {
+            return this.renderApp(location);
+          }
+        } else if (this.state.loggingIn) {
+          // display spiner until login request completes
+          return <div id='app' className='bp3-dark'>
+            <div id='content'>
+              <div className='dead-center'>
+                <Spinner size={Spinner.SIZE_LARGE} />
+              </div>
+            </div>
+          </div>;
+        }
+
+        // else while not logged-in and not waiting to login, display login component
+        return <div id='app' className='bp3-dark'>
+          <div id='content'>
+            <div className='dead-center'>
+              <Login {...this.state.auth} onLoginAction={this.handleLoginAction.bind(this)} />
+            </div>
+          </div>
+        </div>;
+      }
+    }
+    />;
+  }
+
   render() {
     return (
       <MemoryRouter>
-        <ERPNextProvider value={ this.backend.adapter }>
-          <Route
-            render={({ location }) => {
-
-              // toggle between rendering the app or spiner if we are in the process of logging in.
-              if (this.state.loggedIn) {
-                // default redirect to timesheet page if not set(due to login)
-                if ( location.pathname == '/' ) {
-                  return <Redirect to="/timesheet" />
-                } else {
-                  return this.renderApp(location);
-                }
-              } else if ( this.state.loggingIn ) {
-                // display spiner until login request completes
-                return <div id="app" className="bp3-dark">
-                  <div id="content">
-                    <div className="dead-center">
-                      <Spinner size={Spinner.SIZE_LARGE} />
-                    </div>
-                  </div>
-                </div>;
+        <BackendProvider >
+          <BackendConsumer>
+            {backend => {
+              // update internal backend reference outside of render cycle
+              setTimeout(() => this.setBackend(backend), 1);
+              // then only render app after we have the backend and continue as normal
+              if (this.backend != null) {
+                return this.renderLoadShim();
               }
-
-              // else while not logged-in and not waiting to login, display login component
-              return <div id="app" className="bp3-dark">
-                <div id="content">
-                  <div className="dead-center">
-                    <Login {...this.state.auth} onLoginAction={ this.handleLoginAction.bind(this) } />
-                  </div>
-                </div>
-              </div>;
-            }
-          }
-          />
-        </ERPNextProvider>
+            }}
+          </BackendConsumer>
+        </BackendProvider>
       </MemoryRouter>
     )
   }

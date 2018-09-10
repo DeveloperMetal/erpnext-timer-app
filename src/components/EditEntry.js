@@ -2,40 +2,57 @@ import React from 'react'
 import { Button, Spinner, FormGroup, InputGroup, Intent, Tooltip } from "@blueprintjs/core";
 import { Select } from '@blueprintjs/select';
 import { Future } from './Future';
-import { ERPNextConsumer } from './ErpNext';
+import { BackendConsumer } from '../connectors/Data';
+import { FieldSelect } from './Fields';
 
-const TaskPredicate = () => {
-  (query, item) => {
+class EditorFields extends React.PureComponent {
+
+  taskPredicate(query, task) {
     // don't filter out actions from list
-    if (item.hasOwnProperty('_action')) {
+    if (task.hasOwnProperty('_action')) {
       return true;
     }
 
-    let parts = Object.values(item)
+    // combine values from project and task so we can search both
+    let parts = Object.values(task).concat(Object.values(task.project))
       .filter(i => i != null)
       .map(i => i.toString().toLowerCase())
       .join('.');
     return parts
       .indexOf(query.toLowerCase()) >= 0;
   }
-}
 
-const SelectItemRendererFactory = (icon, ) => {
-  return (item, { handleClick, modifiers }) => {
+  renderTask(task, { handleClick, modifiers }) {
     if (!modifiers.matchesPredicate) {
       return null;
     }
     return (
-      <MenuItem
-        active={modifiers.active}
-        disabled={modifiers.disabled}
-        key={item}
-        text={item}
-        onClick={handleClick}
-      />
+      <li 
+        key={task.name}
+        onClick={handleClick}>
+
+      </li>
     );
-  };
-};
+  }
+
+  render() {
+    return <div>
+      <FieldSelect
+        label="Task"
+        id="tasks_select"
+        items={this.props.tasks}
+        itemRenderer={this.renderTask.bind(this)}
+        itemPredicate={this.taskPredicate.bind(this)}
+      >
+        <Button 
+          fill
+          large
+          text={this.props.selectedTask ? this.props.selectedTask.label:" - Select Task - "} 
+          rightIcon="double-caret-vertical" />
+      </FieldSelect>
+    </div>;
+  }
+}
 
 class Editor extends React.PureComponent {
 
@@ -44,12 +61,10 @@ class Editor extends React.PureComponent {
 
     this.state = {
       name: null,
-      project: {
-        project_name: "Undefined"
-      },
-      task: {
-        task_name: "Undefined"
-      }
+      availableTasks: [],
+      task: null,
+      project: null,
+      description: '',
     }
   }
 
@@ -58,20 +73,30 @@ class Editor extends React.PureComponent {
   }
 
   updateProjects() {
-    console.log("update projects...");
     return Promise.all([
-      this.props.backend.getProjects(),
-      this.props.backend.getTasks()
+      this.props.backend.fetchProjects(),
+      this.props.backend.fetchTasks()
     ]).then(results => {
-    
 
-      this.projects = projects.
-      console.log("Got projects...");
-      console.log(results);
+      this.projects = results[0];
+      this.tasks = results[1];
+
+      this.setState({
+        availableTasks: [{
+          name: '-new-task-',
+          label: 'New Task',
+          _action: true,
+          project: null
+        }].concat(results[1])
+      }, () => {
+        console.log('Got data...', this.state.availableTasks);
+      })
     });
   }
 
   render() {
+
+    console.log("Entry Editor: ", this.props);
 
     return (
       <Future
@@ -82,37 +107,28 @@ class Editor extends React.PureComponent {
             )
           }
         onWait={ (futureInt) => <Spinner /> }
-        onFail={ (futureInt, err) => <div>Error...</div> }
+        onFail={ (futureInt, err) => <div>There was an error fetching this entry. See error below<br/>{err.toString()}</div> }
         onRender={ (futureInt, result) => (
-          <div> Editor Here </div>
+          <div>
+            <EditorFields
+              tasks={this.state.availableTasks}
+              selectedTask={this.state.selectedTask}
+            />
+          </div>
         )} />
     );
   }
 
 }
 
-export default class TimeEntry extends React.PureComponent {
-
-  constructor(props) {
-    super(props);
-
-    this.state = {
-    }
-
-  }
-
-  render() {
-    console.log("EditEntry", this.props);
-
-    let entryName = null;
-
-    return (
-      <div className="page entry">
-        <ERPNextConsumer>
-          { backend => <Editor backend={backend}/> }
-        </ERPNextConsumer>
-      </div>
-    );
-  }
+export const TimeEntry = (props) => {
+  return (
+    <div className="page entry">
+      <BackendConsumer>
+        { backend => <Editor backend={backend} {...props}/> }
+      </BackendConsumer>
+    </div>
+  );
 }
 
+export default TimeEntry;

@@ -41,7 +41,7 @@ export class Future extends React.PureComponent {
             this.setState(prevState => ({
                 ...prevState,
                 waiting: 0,
-                render: onFail,
+                render: this.props.onFail,
                 error: err
             }));
         }
@@ -72,7 +72,7 @@ export class Future extends React.PureComponent {
 
     render() {
         if ( this.state.error ) {
-            return this.state.render(this, error);
+            return this.state.render(this, this.state.error);
         } else {
             return this.state.render(this);
         }
