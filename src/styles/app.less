@@ -1,10 +1,13 @@
+@import "~bootstrap/dist/css/bootstrap.min.css";
 @import "~@blueprintjs/core/lib/css/blueprint.css";
 @import "~@blueprintjs/table/lib/css/table.css";
+@import "~@blueprintjs/datetime/lib/css/blueprint-datetime.css";
 @import "~@blueprintjs/icons/lib/css/blueprint-icons.css";
 
 html, body, #root {
     width: 100%;
     height: 100%;
+    overflow: hidden;
 }
 
 #app {
@@ -48,22 +51,6 @@ html, body, #root {
             .bp3-icon {
                 color: #48aff0;
             }
-
-            &::after {
-                left: 100%;
-                top: 50%;
-                border: solid transparent;
-                content: " ";
-                height: 0;
-                width: 0;
-                position: absolute;
-                pointer-events: none;
-                border-color: rgba(0, 0, 0, 1);
-                border-left-color: #f3f3f3;
-                border-width: 10px;
-                margin-top: -10px;
-                outline: none;
-            }
         }
 
         .inner {
@@ -77,16 +64,18 @@ html, body, #root {
 
 #content {
     flex: 1 1 auto;
-    position: relative;
+    display: flex;
+    flex-direction: row;
+
+    & > * {
+        flex: 1 1 auto;
+    }
 }
 
 .page {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    flex: 1 1 auto;
     padding: 1em;
+    margin: 0;
     background-color: #f3f3f3;
     overflow: hidden;
     
@@ -117,8 +106,15 @@ html, body, #root {
 }
 
 .timesheet {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+
+    .timesheet-zoom {
+        border: 1px solid #394b59;
+        border-top: none;
+        padding: 10px 20px 2px;
+    }
 }
 
 .week-widget {
@@ -199,63 +195,80 @@ html, body, #root {
     border-top: none;
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
-    list-style: none;
-    padding: 0;
-    margin: 0;
     overflow: auto;
+    display: flex;
+    flex-direction: row;
 
-    > li {
-        padding: 1em;
+    .slice {
+        font-size: 12px;
+        flex: 0 0 auto;
+        height: 20px;
+        padding: 2px 4px;
+        border: 1px solid #394b59;
+        border-top: none;
+        border-left: none;
+        text-align: right;
+    }
+
+    .time-entries {
+        flex: 1 1 auto;
+        list-style: none;
+        padding: 0;
         margin: 0;
-        border-bottom: 1px grey solid;
-        display: flex;
-        flex-direction: column;
 
-        .wrap {
+        > li {
+            padding: 1em;
+            margin: 0;
+            border-bottom: 1px grey solid;
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
 
-            .details {
-                flex: 1 1 auto;
-
-                .project {
-                    font-weight: bolder;
-                    color: rgb(74, 123, 216);
-                }
-
-                .title {
-                    font-weight: bolder;
-                }
-            }
-
-            .right-col {
+            .wrap {
                 display: flex;
-                flex-direction: column;
-                flex: 0 0 auto;
-                justify-content: center;
+                flex-direction: row;
 
-                .actions {
+                .details {
                     flex: 1 1 auto;
-                    display: flex;
-                    flex-direction: row;
-                    justify-content: center;
 
-                    * {
-                        align-self: center;
+                    .project {
+                        font-weight: bolder;
+                        color: rgb(74, 123, 216);
+                    }
+
+                    .title {
+                        font-weight: bolder;
                     }
                 }
 
-                .time {
-                    font-size: .8em;
-                    font-weight: bold;
+                .right-col {
+                    display: flex;
+                    flex-direction: column;
                     flex: 0 0 auto;
-                    text-align: center;
+                    justify-content: center;
+
+                    .actions {
+                        flex: 1 1 auto;
+                        display: flex;
+                        flex-direction: row;
+                        justify-content: center;
+
+                        * {
+                            align-self: center;
+                        }
+                    }
+
+                    .time {
+                        font-size: .8em;
+                        font-weight: bold;
+                        flex: 0 0 auto;
+                        text-align: center;
+                    }
                 }
             }
-        }
 
-        &.active .wrap {
-            margin-bottom: .5em;
+            &.active .wrap {
+                margin-bottom: .5em;
+            }
         }
     }
 
@@ -267,3 +280,19 @@ html, body, #root {
         background: white;
     }
 }
+
+.bp3-popover-wrapper.popover-wrapper-fill {
+    display: block;
+    & > .bp3-popover-target {
+        display: block;
+    }
+}
+
+.vertical-center {
+    display: flex;
+    flex-direction: row;
+    > * {
+        align-self: center;
+    }
+}
+

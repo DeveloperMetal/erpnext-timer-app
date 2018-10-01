@@ -15,12 +15,17 @@
     "test:watch": "nwb test --server",
     "package:mac": "del-cli release && electron-packager --overwrite --ignore=\"src|tests|release|public\" --prune --platform=darwin --arch=x64 --out=\"release\" .",
     "package:win": "del-cli release && electron-packager --overwrite --ignore=\"src|tests|release|public\" --prune --platform=win32 --arch=x64 --out=\"release\" .",
-    "package": "del-cli release && electron-packager --overwrite --ignore=\"src|tests|release|public\" --prune --arch=x64 --out=\"release\" ."
+    "package": "del-cli release && electron-packager --overwrite --ignore=\"src|tests|release|public\" --prune --arch=x64 --out=\"release\" .",
+    "postinstall": "yarn electron-rebuild"
   },
   "dependencies": {
     "@blueprintjs/core": "^3.1.0",
+    "@blueprintjs/datetime": "^3.1.0",
     "@blueprintjs/select": "^3.1.0",
     "@blueprintjs/table": "^3.1.0",
+    "bloom-conditionals": "^1.0.1",
+    "bloom-state-validator": "file:../bloom-state-validator",
+    "bootstrap": "^4.1.3",
     "classnames": "^2.2.6",
     "desktop-idle": "^1.1.1",
     "electron-devtools-installer": "^2.2.4",
@@ -29,6 +34,7 @@
     "electron-window-state": "^4.1.1",
     "emotion": "^9.2.4",
     "esm": "^3.0.55",
+    "jquery": "^3.3.1",
     "keytar": "^4.2.1",
     "modern-normalize": "^0.5.0",
     "moment": "^2.22.2",

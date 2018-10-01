@@ -41,16 +41,29 @@ function queryStringBuilder(args, encodeValues) {
 }
 
 function parseFrappeErrorResponse(err) {
-  console.log(err.response);
-  let errorInfo = { status: err.status, statusText: err.statusText, data: err.response.data }
-  if ( typeof err.response.data === 'string' ) {
+  if (!err.response || typeof err.response.data === undefined ) {
+    return null;
+  }
+
+
+  let message = "Unexpected error",
+      server_messages = [],
+      remoteTrace = [];
+  
+  let errorInfo = { status: err.status, statusText: err.statusText, data: err.response.data || '' };
+  //console.log("frappe parse error", errorInfo);
+  if ( err.status == 502 || errorInfo.data.search(/502\s+bad\s+gateway/gi) > -1 ) {
+    message = "Unable to reach remote server. \nGot 'Gateway Time-out'";
+  } else if ( typeof err.response.data === 'string' ) {
     let rx = /(?:\<pre\>)([^<]+)(?:\<\/pre\>)/ig;
     let matches = rx.exec(err.response.data);
-    let remoteTrace = matches[1].trim().split("\n");
-    let message = remoteTrace[remoteTrace.length - 1];
-    return Object.assign({ message, server_messages: [], remoteTrace }, errorInfo);
+    if ( matches && matches.length > 1 ) {
+      remoteTrace = matches[1].trim().split("\n");
+      message = remoteTrace[remoteTrace.length - 1];
+    } else {
+      message = err.statusText;
+    }
   } else {
-    let message = '', server_messages = [], remoteTrace = [];
     if ('message' in err.response.data) {
       message = err.response.data.message;
     }
@@ -65,9 +78,10 @@ function parseFrappeErrorResponse(err) {
       }
     }
 
-    console.error(message);
-    return Object.assign({ message, server_messages, remoteTrace }, errorInfo);
   }
+
+  console.error(message);
+  return Object.assign({ message, server_messages, remoteTrace }, errorInfo);
 }
 
 class FrappeRest {
@@ -195,7 +209,7 @@ export class ErpNextConnector extends DataConnector {
     this.auth = null;
     this.projects = [];
     this.frappe = null;
-    this.resources = {};
+    this.resources = undefined;
     this.projects = {};
     this.tasks = {};
 
@@ -265,12 +279,20 @@ export class ErpNextConnector extends DataConnector {
       })
   }
 
+  buildResources() {
+    if ( this.resources === undefined && this.frappe !== undefined ) {
+      this.resources = {
+        TimesheetDetail: this.frappe.resource('Timesheet Detail'),
+        Timesheet: this.frappe.resource('Timesheet'),
+        Task: this.frappe.resource('Task'),
+        Project: this.frappe.resource('Project'),
+        Employee: this.frappe.resource('Employee')
+      }
+    }
+  }
+
   onLogin() {
-    this.resources.TimesheetDetail = this.frappe.resource('Timesheet Detail');
-    this.resources.Timesheet = this.frappe.resource('Timesheet');
-    this.resources.Task = this.frappe.resource('Task');
-    this.resources.Project = this.frappe.resource('Project');
-    this.resources.Employee = this.frappe.resource('Employee');
+    this.buildResources();
 
     // lets find our employee record so we can find our timesheets
     return this.fetchEmployeeByUserId(this.auth.usr)
@@ -446,7 +468,7 @@ export class ErpNextConnector extends DataConnector {
 
   cacheProjects(projectsRaw) {
     // build project entries cache
-    this.projects = projects.reduce((projs, p) => {
+    this.projects = projectsRaw.reduce((projs, p) => {
       projs[p.name] = new Project({
         id: p.name,
         title: p.project_name,
@@ -461,7 +483,7 @@ export class ErpNextConnector extends DataConnector {
 
   cacheTasks(tasksRaw) {
     // build task entries cache
-    this.tasks = tasks.reduce((tsks, t) => {
+    this.tasks = tasksRaw.reduce((tsks, t) => {
       tsks[t.name] = new Task({
         id: t.name,
         title: t.subject,
@@ -560,6 +582,8 @@ export class ErpNextConnector extends DataConnector {
 
   ///// - Internal Model 
   fetchDayTimesheetDetailsByTask(timesheet_name, task_name, fields) {
+    this.buildResources();
+
     if (!fields) {
       fields = TimesheetDetailsFields;
     }
@@ -575,6 +599,8 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchStartedDayTimesheetDetailsByTask(timesheet_name, task_name, fields) {
+    this.buildResources();
+
     if (!fields) {
       fields = TimesheetDetailsFields;
     }
@@ -591,6 +617,8 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchEmployeeByUserId(user_id) {
+    this.buildResources();
+
     return this.resources.Employee.read({
       fields: ["name"],
       filters: [
@@ -600,6 +628,8 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchAllOpenProjects() {
+    this.buildResources();
+
     return this.resources.Project.read({
       fields: ProjectFields,
       filters: [
@@ -609,6 +639,8 @@ export class ErpNextConnector extends DataConnector {
   }
   
   fetchAllTasks() {
+    this.buildResources();
+
     return this.resources.Task.read({
       fields: TaskFields,
       filters: [
@@ -619,6 +651,8 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchDraftTimesheetsByEmployee(employee, fields) {
+    this.buildResources();
+
     return this.resources.Timesheet.read({
       fields: fields || TimesheetFields,
       filters: [
@@ -629,9 +663,7 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchTimesheetFromRange(dateStart, dateEnd) {
-    if (!this.resources.Timesheet ) {
-      throw new ConnectorNotReady("Timesheet Resource not bound");
-    }
+    this.buildResources();
 
     return this.resources.Timesheet.read({
       fields: TimesheetFields,
@@ -643,6 +675,7 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchTimesheetDetailsFromParent(parent) {
+    this.buildResources();
     return this.resources.TimesheetDetail.read({
       fields: TimesheetDetailsFields,
       filter: [
@@ -653,6 +686,7 @@ export class ErpNextConnector extends DataConnector {
   }
 
   fetchTimesheetDetailsFromDateRange(startDate, endDate) {
+    this.buildResources();
     return this.resources.TimesheetDetail.read({
       fields: TimesheetDetailsFields,
       filters: [
@@ -666,18 +700,356 @@ export class ErpNextConnector extends DataConnector {
 
 }
 
-// create our singleton connector instance
-const connector = new ErpNextConnector();
-// create our context to expose connector to app
-const context = React.createContext(connector);
-// helpful wrapper to include our connector by default
-const ERPNextProvider = (props) => {
-  return <context.Provider value={connector} {...props} />
+function fetchAllOpenProjects(frappe) {
+  const Project = frappe.resource('Project');
+
+  return Project.read({
+    fields: ProjectFields,
+    filters: [
+      ["status", "=", "Open"]
+    ]
+  });
 }
-// expose our "context"
-export const ERPNextContext = {
-  Provider: ERPNextProvider,
-  Consumer: context.Consumer
+
+function fetchAllTasks(frappe) {
+  const Task = frappe.resource('Task');
+
+  return Task.read({
+    fields: TaskFields,
+    filters: [
+      ["status", "!=", "Closed"],
+      ["project", "!=", ""]
+    ]
+  });
+}
+
+function fetchTimesheetDetailsFromDateRange(frappe, startDate, endDate) {
+  const TimesheetDetail = frappe.resource('Timesheet Detail');
+
+  return TimesheetDetail.read({
+    fields: TimesheetDetailsFields,
+    filters: [
+      ["from_time", ">=", moment(startDate).startOf('day').format(dateTimeFormat)],
+      ["from_time", "<=", moment(endDate).endOf('day').format(dateTimeFormat)],
+      ["parentfield", "!=", ""] // covers issue where details are left orphan if parentfield is missing.
+    ],
+    order_by: "from_time ASC"
+  });
+}
+
+function fetchTimesheetFromRange(frappe, dateStart, dateEnd) {
+  const Timesheet = frappe.resource('Timesheet');
+
+  return Timesheet.read({
+    fields: TimesheetFields,
+    filters: [
+      ["start_date", ">=", moment(dateStart).startOf('day').format(dateTimeFormat)],
+      ["start_date", "<=", moment(dateEnd).endOf('day').format(dateTimeFormat)]
+    ]
+  })
+}
+
+function findOpenTimesheetDetailByTask(frappe, task_name, timesheet_name) {
+  const TimesheetDetail = frappe.resource('Timesheet Detail');
+
+  return TimesheetDetail.read({
+    fields: timesheetFields,
+    filters: [
+      ["parent", "=", timesheet_name],
+      ["parenttype", "=", "Timesheet"],
+      ["to_time", "=", ""],
+      ["task", "=", task_name]
+    ]
+  });
+}
+
+function insertTimesheetDetail(frappe, task, timesheet_name) {
+  const TimesheetDetail = frappe.resource('Timesheet Detail');
+
+  return TimesheetDetail.create({
+    parent: timesheet_name,
+    parenttype: "Timesheet",
+    parentfield: "time_logs",
+    activity_type: "Programming",
+    from_time: moment().format(dateTimeFormat),
+    time: 0,
+    task: task.id,
+    project: task.project.id
+  })
+  .then(result => {
+    console.log(result);
+    return result.data
+  })
+}
+
+
+
+// expose our data adapter api
+export const ERPNextDataAdapter = {
+    /**
+   * handles logging into backend service.
+   * @param {*} auth 
+   */
+  login(comp, newState, auth) {
+
+    comp.setState({ loggedState: 'acquiring' });
+    let frappe = new FrappeRest(auth.host);
+
+    return frappe.api('login').post({
+      usr: auth.usr,
+      pwd: auth.pwd
+    })
+    .then(() => {
+      newState.auth = auth;
+      newState.loggedState = 'acquired';
+      return newState;
+    })
+    .then(newState => {
+      return ERPNextDataAdapter.fetchProjects(comp, newState, false)
+    })
+    .then(newState => {
+      return ERPNextDataAdapter.fetchTasks(comp, newState, false)
+    })
+    .then(newState => {
+      return ERPNextDataAdapter.fetchDays(
+        comp,
+        newState,
+        comp.state.currentDate.clone().startOf('week'), 
+        comp.state.currentDate.clone().endOf('week')
+      )
+    })
+    .catch(err => {
+      let errorInfo = parseFrappeErrorResponse(err);
+      let errors = [];
+      if (errorInfo ) {
+        if ( errorInfo.message == 'User disabled or missing' ) {
+          errors.push(new LoginError(errorInfo.message, errorInfo));
+        } else {
+          errors.push(new LoginError(errorInfo.message || err.toString(), errorInfo));
+        }
+      } else {
+        errors.push(new LoginError(err.toString(), err))
+      }
+
+      return {
+        loggedState: 'failed',
+        errors
+      };
+    });
+  },
+
+  /**
+   * handles fetching list of projects objects the current logged in user may subscribe to.
+   * @returns {Promise} Promise returning Array of Project instances.
+   */
+  fetchProjects(comp, newState) {
+    const frappe = new FrappeRest(comp.state.auth.host);
+    return fetchAllOpenProjects(frappe)
+      .then(result => {
+        return result.reduce((projs, p) => {
+          projs[p.name] = new Project({
+            id: p.name,
+            title: p.project_name,
+            description: p.notes
+          }, this)
+    
+          return projs;
+        }, {});
+      })
+      .then(projects => {
+        return Object.assign({}, newState, { projects });
+      });
+  },
+
+  /**
+   * handles fetching all tasks the current logged in user may subscribe to.
+   * @returns {Promise} Promise returning Array of Task instances.
+   */
+  fetchTasks(comp, newState) {
+    const frappe = new FrappeRest(comp.state.auth.host);
+    const projects = newState.projects || comp.state.projects;
+    return fetchAllTasks(frappe)
+      .then(result => result.reduce((tsks, t) => {
+        tsks[t.name] = new Task({
+          id: t.name,
+          title: t.subject,
+          description: t.description,
+          status: t.status,
+          assignTo: JSON.parse(t._assign || "[]"),
+          project: projects[t.project],
+          progress: t.progress,
+          tags: JSON.parse(t._user_tags || "[]")
+        }, this)
+
+        return tsks;
+      }, {}))
+      .then(tasks => {
+        return Object.assign({}, newState, { tasks });;
+      });
+  },
+
+  /**
+   * handles fetching DayLogs assigned to the current logged in user.
+   * @param {*} startDate Start date of the query
+   * @param {*} endDate End date of the query
+   * @returns {Promise} Promise returning Array of DayLog instances.
+   */
+  fetchDays(comp, newState, startDate, endDate) {
+    const frappe = new FrappeRest(comp.state.auth.host);
+
+    return Promise.all([
+      fetchTimesheetFromRange(frappe, startDate, endDate),
+      fetchTimesheetDetailsFromDateRange(frappe, startDate, endDate)
+    ]).then(results => {
+
+      const [ timesheets, details ] = results;
+      const tasks = newState.tasks || comp.state.tasks;
+      const projects = newState.projects || comp.state.projects;
+
+      // we should now have all Timesheet Detail in the same range as our Timesheets
+      // so lets pair them and return an array of DayLog instances abstracting out unused fields for this app.
+
+      let days = {}
+      let b = moment(endDate).startOf('day');
+      for (let dayDate = moment(startDate).startOf('day'); 
+              dayDate.diff(b, 'days') <= 0; 
+              dayDate.add(1, 'days')) {
+
+        // find timesheet for this day
+        let timesheet = timesheets.find(t => {
+          return t.start_date && moment(t.start_date, allDateFormats).startOf('day').isSame(dayDate)
+        });
+
+        // lets group all Timesheet Details per task so we can combine them into one
+        // TaskLog object
+        let timesheetDetails = details.filter(detail => {
+          return timesheet && detail.parent == timesheet.name;
+        });
+
+        let groupedDetails = timesheetDetails.reduce((map, d) => {
+          if ( !(d.task in map) ) {
+            map[d.task] = []
+          }
+
+          map[d.task].push(d);
+          return map;
+        }, {});
+
+        let taskLogs = Object.keys(groupedDetails)
+          .reduce((logs, taskName) => {
+
+            let task = tasks[taskName];
+            let taskLog = new TaskLog({ 
+              id: task.id,
+              task,
+              title: task.title,
+              progress: task.progress || 0,
+              description: task.description || "",
+              startTime: null,
+              isActive: false
+            }, comp.state.actions);
+
+            // lazy extend TaskLog to keep track of timesheet.name
+            taskLog.timesheet_name = timesheet ? timesheet.name : null
+
+            // there is the posibility that multiple Timesheet Details may
+            // have from_time set and to_time unset.
+            // we'll take the first "active" one.
+            groupedDetails[taskName].map(detail => {
+
+              // we assume active timer on entries without a to_time value
+              if ( !detail.to_time ) {
+                taskLog.startTime = moment(detail.from_time, dateTimeFormat),
+                taskLog.isActive = true;
+                this.timerTaskLog = taskLog;
+                this.timerTimesheetDetailName = detail.name;
+              } else {
+                // accumulate time
+                taskLog.time += detail.hours * 60;
+              }
+
+            }); /* eof - groupedDetails.map() */
+
+            logs.push(taskLog);
+
+            return logs;
+          }, []);
+
+        // sort taskLogs by start time
+        let orderedTaskLogs = taskLogs.sort((left, right) => {
+            return left.startTime.diff(right.startTime)
+          });
+
+        days[dayDate.format('YYYY-MM-DD')] = new DayLog({
+          id: timesheet?timesheet.name: null,
+          date: dayDate.clone(),
+          locked: timesheet?(timesheet.status != "Draft"):false,
+          taskLogs: orderedTaskLogs
+        }, comp.state.actions);
+      }
+
+      return days;
+    })
+    .then(days => {
+      return Object.assign({}, newState, { days });
+    })
+  },
+
+  /**
+   * handles updating a DayLog data on the backend service.
+   * @param {DayLog} day DayLog instance containing the day's time tracking information.
+   * @returns {Promise} A promise which returns when the DayLog is stored on the backend.
+   */
+  updateDayLog(comp, newState, day) {
+    return Promise.reject(new NotImplemented());
+  },
+
+  /**
+   * handles storing a new task instance on the backend service.
+   * @param {Task} task A Task instance containing the new task information
+   * @returns {Promise} A promise which returns when the task is stored on the backend
+   */
+  createTask(comp, newState, taskObj) {
+    // validate to make sure we have at minimum a task and day entry
+    if ( !('task' in taskObj) ) {
+      return Promise.reject(new Error("Missing task property"));
+    }
+
+    if ( !('day' in taskObj) ) {
+      return Promise.reject(new Error("Missing day property"));
+    }
+
+    let dayLog = comp.state.days[taskObj.day.format('YYYY-MM-DD')];
+    
+
+    findOpenTimesheetDetailByTask()
+
+
+
+    return Promise.reject(new NotImplemented());
+  },
+
+  /**
+   * handles starting the backend mechanism to track task work start time.
+   * The backend connector is expected to update the passed TaskLog with the updated information after
+   * starting the timer.
+   * @param {TaskLog} taskLog The task log object which tracks the log information locally
+   * @return {Promise}
+   */
+  startTimer(taskLog) {
+    return Promise.reject(new NotImplemented());
+  },
+
+  /**
+   * handles stoping the backend mechanism to track task work duration time.
+   * The backend connector is expected to update the passed TaskLog with the updated information after
+   * stoppign the timer.
+   * @param {TaskLog} taskLog 
+   * @return {Promise}
+   */
+  stopTimer(taskLog) {
+    return Promise.reject(new NotImplemented());
+  }
 }
 // make it default so we can use this pattern to load other connectors in the future.
-export default ERPNextContext;
+export default ERPNextDataAdapter;

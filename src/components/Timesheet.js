@@ -1,11 +1,10 @@
 import moment from "moment";
 import React from 'react'
-import { Button, ButtonGroup, ProgressBar, Icon, Intent } from "@blueprintjs/core";
+import { Button, Slider, ProgressBar, Icon, Intent, PanelStack } from "@blueprintjs/core";
 import { withContentRect } from 'react-measure';
-import { padLeft } from '../utils';
+import EditTimeEntry from './EditEntry';
 
-import { BackendConsumer } from '../connectors/Data';
-import { AppToaster } from './AppToaster';
+import { padLeft } from '../utils';
 
 const Day = ({ date, size, active, onClick }) => {
   let name = date.format('d'.repeat(size));
@@ -71,8 +70,6 @@ const TimeEntry = (props) => {
   let hours = Math.floor(time / 60);
   let minutes = Math.floor(time - (hours * 60));
 
-  console.log("Render entry");
-
   return <li className={"entry" + (isActive ? " active" : "")}>
 
     <div className="wrap">
@@ -112,9 +109,18 @@ class TimeTracker extends React.PureComponent {
       />
     );
 
-    return <ul className="time-tracker">
-      { entries }
-    </ul>;
+    let slices = [];
+    for(let i=0; i < 24; i++) {
+      let t = moment(`${i}:00`, 'HH:mm').format("hh:mm a");
+      slices.push(<div key={`slice-${t}`} className="slice">{t}</div>);
+    }
+
+    return <div className="time-tracker">
+      <div className="time-slices">{slices}</div>
+      <ul className="time-entries">
+        { entries }
+      </ul>
+    </div>;
   }
 }
 
@@ -123,33 +129,20 @@ class WeekView extends React.PureComponent {
     super(props);
 
     this.state = {
-      size: 5,
-      activeDay: props.date.day(),
-      activeDate: props.date
+      size: 5
     }
-  }
-
-  handleDayPick(date) {
-    let dayNum = date.day();
-    this.setState({
-      activeDay: dayNum,
-      activeDate: date
-    }, () => {
-      if (this.props.onChange) {
-        this.props.onChange(date);
-      }
-    })
   }
 
   render() {
 
-    let weekDate = this.state.activeDate.clone().startOf('week').subtract(1, 'days');
+    const weekDate = this.props.date.clone().startOf('week').subtract(1, 'days');
+    const activeDay = this.props.date.day();
 
     return <div className="week-widget">
       <DayGroup
-        onDayPick={this.handleDayPick.bind(this)}
+        onDayPick={this.props.onChange}
         date={weekDate}
-        activeDay={this.state.activeDay}
+        activeDay={activeDay}
         size={this.state.size}
         bounds
         onResize={(contentRect) => {
@@ -173,121 +166,121 @@ class WeekView extends React.PureComponent {
   }
 }
 
-export class TimesheetPage extends React.PureComponent {
+export class TimesheetPanel extends React.PureComponent {
 
   constructor(props) {
     super(props);
 
     this.state = {
-      date: moment(new Date()),
-      week: moment(new Date()).startOf('week'),
-      days: {},
-      entries: []
-    }
-  }
-
-  componentDidMount() {
-    this.updateDateRange();
-  }
-
-  updateDateRange() {
-    this.props.backend
-      .fetchDays(this.state.week, this.state.week.clone().add(7, 'days'))
-      .then(days => {
-        this.setState({
-          days,
-          entries: this.getDayEntries(this.state.date)
-        })
-      })
-      .catch(err => {
-        this.displayError("Error while fetching day data.", err);
-      })
-  }
-
-  displayError(label, err, icon, intent) {
-    console.error(err);
-    
-    let errors = [label];
-    errors.push(err.message);
-
-    AppToaster.show({
-      icon: icon || 'globe-network',
-      intent: intent || Intent.DANGER,
-      message: <div>{errors.map(e => <div key={e}>{e}</div>)}</div>
-    });
-  }
-
-  getDayEntries(date) {
-    // remote time component from date so we can match purely by date.
-    let key = date.format('YYYY-MM-DD');
-    if (key in this.state.days ) {
-      return this.state.days[key].taskLogs;
-    }
-
-    return [];
-  }
-
-  onToggleTimer(taskLog) {
-    console.log(taskLog);
-    if ( taskLog.isActive ) {
-      taskLog.stopTimer()
-        .then(() => {
-          // force refresh IF taskLogs have actually changed
-          this.setState({
-            entries: this.getDayEntries(this.state.date)
-          })
-        })
-        .catch(err => {
-          this.displayError("There was an error stopping timer:", err);
-        })
-    } else {
-      taskLog.startTimer()
-        .then(() => {
-          console.log("Timer started...");
-          // force refresh IF taskLogs have actually changed
-          this.setState({
-            entries: this.getDayEntries(this.state.date)
-          }, () => {
-            console.log("re-render?");
-          })
-        })
-        .catch(err => {
-          this.displayError("There was an error starting timer:", err);
-        })
+      timeZoom: 0
     }
   }
 
   onEditEntry(entry) {
-    let day = this.state.days[moment(this.state.date).startOf('day').format('YYYY-MM-DD')];
-    this.props.history.push(`/timesheet/${day.id}/${entry.id}`);
-  }
-
-  handleDayChange(date) {
-    let newWeek = moment(date).startOf('week');
-    this.setState({
-      date,
-      week: newWeek,
-      entries: this.updateDateRange(date)
-    });
+    const { backend } = this.props;
+    this.props.openPanel({
+      component: EditEntry,
+      props: { entry, ...this.props},
+      title: `Edit ${backend.currentDate.format('dddd, LL')}`
+    })
   }
 
   render() {
-    console.log("Timesheet: ", this.props);
+    const { backend } = this.props;
+    const onZoomChange = (zoom) => this.setState({timeZoom: zoom});
+
+    console.log(backend.currentDate.format("YYYY-MM-DD"));
+
     return <div className="page timesheet">
-      <WeekView date={this.state.date} onChange={this.handleDayChange.bind(this)} />
+      <WeekView date={backend.currentDate} onChange={backend.actions.setCurrentDate} />
+      <div className="timesheet-zoom">
+        <Slider 
+          min={0} 
+          max={60} 
+          stepSize={1} 
+          labelStepSize={15} 
+          value={this.state.timeZoom}
+          onChange={onZoomChange}
+        />
+      </div>
       <TimeTracker 
-        date={this.state.date} 
-        entries={this.state.entries || []}
-        onToggleTimer={this.onToggleTimer.bind(this)}
+        date={backend.currentDate} 
+        entries={backend.entries}
+        onToggleTimer={backend.actions.startTimer}
         onEditEntry={this.onEditEntry.bind(this)}
       />
     </div>;
   }
 }
 
-export const Timesheet = (props) => {
-  return <BackendConsumer>{backend => {
-    return <TimesheetPage backend={backend} {...props} />}}
-  </BackendConsumer>;
+export class Timesheet extends React.PureComponent {
+
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      panels: [{ 
+        component: TimesheetPanel, 
+        title: "Timesheet", 
+        props: this.props 
+      }]
+    }
+
+    this.refHandlers = {
+      panelStack: (ref) => this.panel = ref
+    }
+  }
+
+  componentDidUpdate() {
+    if ( !this.props.navMenu ) {
+      return;
+    }
+
+    if ( this.props.location.pathname == '/timesheet' && this.state.panels[0].component !== TimesheetPanel ) {
+      this.panel.handlePanelClose(this.state.panels[0]);
+    }
+
+    if ( !this.props.navMenu.hasSubMenu('timesheet', 'timesheet_add_entry') ) {
+      this.props.navMenu.addSubMenu('timesheet', {
+        id: "timesheet_add_entry",
+        label: "Add Entry",
+        icon: "plus",
+        isActive: () => this.state.panels[0].title == "Add Entry",
+        onSelect: () => this.addEntryClick()
+      })
+    }
+  }
+
+  addEntryClick() {
+    if ( this.state.panels[0].component !== EditTimeEntry ) {
+      this.props.history.push('/timesheet/add_entry');
+      this.panel.handlePanelOpen({
+        component: EditTimeEntry,
+        title: "Add Entry",
+        props: this.props
+      });
+    }
+  }
+
+  addPanel(newPanel) {
+    this.setState({
+      panels: [newPanel, ...this.state.panels]
+    })
+  }
+
+  removePanel() {
+    this.setState({
+      panels: this.state.panels.slice(1)
+    })
+  }
+
+  render() {
+    const onAddPanel = (newPanel) => this.addPanel(newPanel);
+    const onRemovePanel = () => this.removePanel();
+    console.log("panel render");
+
+    return <PanelStack ref={(ref=>this.refHandlers.panelStack(ref))} initialPanel={this.state.panels[0]} onOpen={onAddPanel} onClose={onRemovePanel} />
+  }
 }
+
 export default Timesheet;
