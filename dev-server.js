@@ -10,6 +10,7 @@ const nwbExpress = require('nwb/express')
 
 app.use(
   nwbExpress(express, {
+    hmr: false,
     reload: true,
   })
 )

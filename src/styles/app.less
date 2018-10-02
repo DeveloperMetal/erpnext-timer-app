@@ -3,6 +3,7 @@
 @import "~@blueprintjs/table/lib/css/table.css";
 @import "~@blueprintjs/datetime/lib/css/blueprint-datetime.css";
 @import "~@blueprintjs/icons/lib/css/blueprint-icons.css";
+@import "~bloom-nav-column/src/styles/default.less";
 
 html, body, #root {
     width: 100%;
@@ -19,69 +20,169 @@ html, body, #root {
     &.bp3-dark {
         background-color: #394b59;
     }
-}
 
-#nav {
-    flex: 0 0 auto;
-    background-color: #394b59;
+    .bloom {
+        &.nav-vertical {
+            width: 3em;
 
-    a:hover {
-        text-decoration: none;
-    }
+            &:not(.collapsed) {
+                width: 11em;
+            }
 
-    .nav-item {
-        outline: none;
-        transition: width 1s ease;
-        border-top-left-radius: 5px;
-        border-bottom-left-radius: 5px;
-        margin-left: 2px;
-
-        .bp3-button {
-            outline: none;
-        }
-
-        &:hover span {
-            text-decoration: none;
-        }
-
-        &.active {
-            color: #48aff0;
-            background-color: #f3f3f3;
-
-            .bp3-icon {
-                color: #48aff0;
+            .icon {
+                width: 3em;
             }
         }
 
-        .inner {
-            border-top: 1px solid black;
-            .bp3-button-text {
-                font-size: 80%;
-            }
-        }
+        .bloom-nav-vertical-theme(
+            #332E2C,
+            white,
+            #f1f1f1, 
+            #68829E,
+            rgb(70, 142, 201),
+            black,
+            rgb(83, 83, 83)
+        );
     }
-}
 
-#content {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: row;
-
-    & > * {
+    #content {
         flex: 1 1 auto;
+        display: flex;
+        flex-direction: row;
+        margin-left: 5px;
+    
+        & > * {
+            flex: 1 1 auto;
+        }
+
+        .page {
+            flex: 1 1 auto;
+            padding: 1em;
+            margin: 0;
+            background-color: #f1f1f1;
+            overflow: hidden;
+
+            .page-title {
+                font-size: 1.5em;
+                font-weight: bolder;
+                padding: 0.3em;
+                background: white;
+                text-align: center;
+                color: #f98766;
+                margin: -0.7em -1.5em 0 -1.5em;
+                z-index: 2;
+                box-shadow: 0 2px 6px #d8d8d8;
+            }
+            
+            > h1 {
+                margin-top: 0;
+            }
+        }
     }
+
+    
 }
 
-.page {
-    flex: 1 1 auto;
-    padding: 1em;
-    margin: 0;
-    background-color: #f3f3f3;
-    overflow: hidden;
+
+
+
+.task-list {
+    overflow: auto;
+
+    .task-list-item {
+        display: flex;
+        flex-direction: column;
+        font-size: 1em;
+        margin: 1em 0;
+
+        .related {
+            display: flex;
+            flex-direction: row;
+            .bp3-button-text {
+                font-size: .8em;
+                font-weight: lighter;
+            }
+            .bp3-icon svg {
+                width: 12px;
+                height: 12px;
+            }
+
+            .project-name {
+                flex: 1 1 auto;
+                overflow: hidden;
+            }
+
+            .parent {
+                flex: 1 1 auto;
+                overflow: hidden;
+            }
+        }
+
+        .task-content {
+            display: flex;
+            flex-direction: row;
+
+            .task-info {
+                flex: 1 1 auto;
+                .subject {
+                    font-size: 1.2em;
+                    font-weight: bolder;
+                }
+
+                .description {
+                    word-break: normal;
+                    text-overflow: ellipsis;
+                    max-height: 0;
+                    overflow: hidden;
+                    font-size: .8em;
+                    padding-right: 1em;
+                    transition: max-height .5s ease-out;
+                }
+
+                .elapsed-time {
+                    color: #7d7d7d;
+                    .measure {
+                        color: black;
+                    }
+                }
+
+            }
+
+            .actions {
+                flex: 0 0 auto;
+                width: 4em;
+                text-align: center;
+
+                .bp3-icon svg {
+                    width: 32px;
+                    height: 32px;
+                }
     
-    > h1 {
-        margin-top: 0;
+            }
+        }
+
+        .tags {
+            .bp3-tag {
+                margin-right: 5px;
+                font-size: .75em;
+                padding: 2px 5px;
+                color: #7d7d7d;
+            }
+        }
+
+        &:hover {
+            .task-content {
+                .task-info {
+                    .description {
+                        max-height: 10em;
+                        transition: max-height .5s ease-in;
+                    }
+                }
+            }
+        }
+
     }
+
 }
 
 .dead-center {

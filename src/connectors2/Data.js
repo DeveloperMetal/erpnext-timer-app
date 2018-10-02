@@ -1,5 +1,5 @@
-import React from 'react';
-import { ipcRenderer } from 'electron';
+import React from "react";
+import moment from "moment";
 
 export class ConnectorError extends Error {
   constructor(message, info, error) {
@@ -28,10 +28,28 @@ export class ConnectorNotReady extends ConnectorError { }
 export class InvalidOperation extends ConnectorError { }
 
 function bindCallbacks(obj, names) {
-  console.log("Bind: ", obj, names);
   let result = {}
   names.forEach(name => Reflect.set(result, name, Reflect.get(obj, name).bind(obj)));
   return result;
+}
+
+function safeCall(cb, ...args) {
+  if ( typeof cb === "function" ) {
+    return new Promise((resolve, reject) => {
+      try {
+        resolve(cb(...args));
+      } catch (err) {
+        console.error(err);
+        reject(err);
+      }
+    })
+  } else {
+    return Promise.Reject(new InvalidOperation("Callback is not a function"));
+  }
+}
+
+function defferedSafeCall(cb, ...args) {
+  return () => safeCall(cb, ...args);
 }
 
 const context = React.createContext();
@@ -51,13 +69,18 @@ export class BackendProvider extends React.PureComponent {
       actions: {
         ...bindCallbacks(this, [
           "throwError",
-          "login"
+          "login",
+          "listTasks",
+          "startTask",
+          "stopTask"
         ]),
       }
     }
   }
 
-  throwError(err, rethrow=true) {
+  throwError(err, rethrow=true, done=null) {
+    console.error("ERROR IN BACKEND CALL: ", err);
+
     this.setState(prevState => {
       errors: [...prevState.errors, err]
     });
@@ -65,39 +88,72 @@ export class BackendProvider extends React.PureComponent {
     if ( rethrow ) {
       // rethrow error so we can handle it upstream
       throw err;
+    } else if ( typeof done === "function" ) {
+      done(err);
     }
   }
 
   login(auth, done) {
-    if ( !auth ) {
-      auth = {
-        host: ipcRenderer.sendSync('getSetting', 'host'),
-        usr: ipcRenderer.sendSync('getSetting', 'usr'),
-        pwd: ipcRenderer.sendSync('getSetting', 'pwd'),
-      };
-    }
     this.setState({
       attemptingLogin: true,
+      loggedIn: false,
     }, () => {
       this.connector.login(auth)
-        .then(() => {
+        .then(user => {
           this.setState({
             attemptingLogin: false,
             loggedIn: true,
             auth,
-          }, () => {
-            if ( typeof done === "function" ) done(true, null)
-          })
+            user
+          }, defferedSafeCall(done, user, null))
         })
         .catch(err => {
           this.setState({
             attemptingLogin: false,
-            loggedIn: false
-          }, () => {
-            if ( typeof done === "function" ) done(false, err)
-          })
-          this.throwError(err)
+            loggedIn: false,
+            auth: null
+          }, () => 
+            this.throwError(
+              err, 
+              false, 
+              defferedSafeCall(done, false, err)
+            ));
+          
         });
+      });
+  }
+
+  listTasks(done) {
+    this.connector.listTasks()
+      .then(tasks => {
+        safeCall(done, tasks);
+      })
+      .catch(err => this.throwError(
+        err, 
+        false, 
+        defferedSafeCall(done, [], err)
+      ));
+  }
+
+  startTask(task_name, project_name, done) {
+    let timestamp = moment.utc();
+    this.connector.startTask(task_name, project_name, timestamp, this.state.user.employee_name)
+      .then(() => {
+        safeCall(done, true);
+      })
+      .catch(err => {
+        this.throwError(err, false, defferedSafeCall(done, false))
+      });
+  }
+
+  stopTask(task_name, done) {
+    let timestamp = moment.utc();
+    this.connector.stopTask(task_name, timestamp, this.state.user.employee_name)
+      .then(() => {
+        safeCall(done, true);
+      })
+      .catch(err => {
+        this.throwError(err, false, defferedSafeCall(done, false))
       });
   }
 
