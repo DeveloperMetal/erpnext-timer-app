@@ -5,7 +5,7 @@ import React from 'react'
 import { render } from 'react-dom'
 import 'styles/app.less';
 import { AppContainer } from 'react-hot-loader';
-import App from "./components2/App";
+import App from "./components/App";
 
 const RenderApp = Component => {
   render(<AppContainer><Component /></AppContainer>, document.querySelector('#root'));    
@@ -14,5 +14,5 @@ const RenderApp = Component => {
 RenderApp(App);
 
 if ( module.hot ) {
-  module.hot.accept("./components2/App", () => { RenderApp(App) });
+  module.hot.accept("./components/App", () => { RenderApp(App) });
 }

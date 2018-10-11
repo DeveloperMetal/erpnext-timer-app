@@ -77,14 +77,59 @@ html, body, #root {
             > h1 {
                 margin-top: 0;
             }
+
+            &.timeline {
+                padding: 1em 0;
+                display: flex;
+                flex-direction: column;
+
+                .zoom {
+                    .value {
+                        font-weight: bolder;
+                        font-size: .9em;
+                    }
+                    .measure {
+                        margin-left: .8em;
+                        font-size: .8em;
+                    }
+                }
+
+                .timeline-list {
+                    flex: 1 1 auto;
+                    overflow-y: auto;
+                }
+
+                .time-block {
+                    .top-bar {
+                        display: flex;
+                        flex-direction: row;
+
+                        .start {
+                            flex: 0 0 auto;
+                            padding-left: .5em;
+                        }
+
+                        .title {
+                            flex: 1 1 auto;
+                            font-weight: bolder;
+                            padding: 0 .5em;
+                        }
+
+                        .end {
+                            flex: 0 0 auto;
+                            padding-right: .5em;
+                        }
+                    }
+                    .content > .content {
+                        padding: 5px;
+                    }
+                }
+            }
         }
     }
 
     
 }
-
-
-
 
 .task-list {
     overflow: auto;
