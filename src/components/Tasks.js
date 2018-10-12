@@ -2,7 +2,7 @@
 
 // Third party
 import React from "react";
-import { Card, Button, Tag, MenuItem } from "@blueprintjs/core";
+import { Card, Button, Tag, MenuItem, Spinner } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import moment from "moment";
 import momentDurationFormatSetup from "moment-duration-format";
@@ -18,6 +18,7 @@ import type Moment from "moment";
 
 // Components
 import { BackendConsumer } from "../connectors/Data";
+import { makeCancelable } from "../utils";
 
 const ActivityPredicate = (query, activity) => {
   return activity.label.toLowerCase().indexOf(query.toLowerCase()) >= 0;
@@ -38,13 +39,15 @@ const ActivityRenderer = (activity, { handleClick, modifiers }) => {
 export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskListItemState> {
 
   timerId : ?IntervalID;
+  playPromise : ?any;
 
   constructor(props : TaskListItemProps) {
     super(props)
 
     this.state = {
       from_time: null,
-      to_time: null
+      to_time: null,
+      waiting: false
     }
     this.timerId = null; 
   }
@@ -92,6 +95,10 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
     if ( this.timerId ) {
       clearInterval(this.timerId);
     }
+
+    if ( this.playPromise ) {
+      this.playPromise.cancel();
+    }
   }
 
   render() {
@@ -106,10 +113,35 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
       })
     }
     const onPlayClick = (activity) => {
-      onStartTask(task, activity, this.onTimerStarted)
+      this.setState({
+        waiting: true,
+      }, () => {
+        this.playPromise = makeCancelable(onStartTask(task, activity, this.onTimerStarted));
+        this.playPromise.promise
+          .then(() => {
+            this.setState({ waiting: false })
+          })
+          .catch(() => {
+            // there should be no errors happening here
+            // this promise is here to handle the spinner display
+          });
+      });
+      
     }
     const onStopClick = () => {
-      onStopTask(task)
+      this.setState({
+        waiting: true,
+      }, () => {
+        this.playPromise = makeCancelable(onStopTask(task));
+        this.playPromise.promise
+          .then(() => {
+            this.setState({ waiting: false });
+          })
+          .catch(() => {
+            // there should be no errors happening here
+            // this promise is here to handle the spinner display
+          })
+      });
     }
 
     let total_ms = Math.floor((task.total_hours || 0) * 3600000);
@@ -132,24 +164,33 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
           <div className="elapsed-time">Running Time: <span className="measure">{total_time}</span></div>
         </div>
         <div className="actions">
-          { task.is_running && (
-            <Button icon="stop" minimal large onClick={onStopClick} />
+          { this.state.waiting && (
+            <Spinner size="30" />
           ) }
 
-          { !task.is_running && (
-            <Select
-              resetOnClose
-              resetOnQuery 
-              resetOnSelect
-              items={this.props.activities || []}
-              itemPredicate={ActivityPredicate}
-              itemRenderer={ActivityRenderer}
-              noResults={<MenuItem disabled text="No Results." />}
-              onItemSelect={onPlayClick}
-            >
-              <Button icon="play" minimal large />
-            </Select>
+          { !this.state.waiting && (
+            <React.Fragment>
+              { task.is_running && (
+                <Button icon="stop" minimal large onClick={onStopClick} />
+              ) }
+
+              { !task.is_running && (
+                <Select
+                  resetOnClose
+                  resetOnQuery 
+                  resetOnSelect
+                  items={this.props.activities || []}
+                  itemPredicate={ActivityPredicate}
+                  itemRenderer={ActivityRenderer}
+                  noResults={<MenuItem disabled text="No Results." />}
+                  onItemSelect={onPlayClick}
+                >
+                  <Button icon="play" minimal large />
+                </Select>
+              ) }
+            </React.Fragment>
           ) }
+
         </div>
       </div>
       <div className="tags">
@@ -174,24 +215,28 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     backend.actions.listTasks();
   }
 
-  onStartTask(task : DataTypes.Task, activity : DataTypes.Activity) {
+  onStartTask(task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any> {
     const { backend } = this.props;
 
-    backend.actions.startTask(task, activity).then(() => {
+    return backend.actions.startTask(task, activity).then(() => {
       this.props.nav("timesheet");
     })
   }
 
-  onStopTask(task : DataTypes.Task) {
+  onStopTask(task : DataTypes.Task) : Promise<any> {
     const { backend } = this.props;
 
-    backend.actions.stopTask(task);
+    return backend.actions.stopTask(task);
   }
 
   render() {
 
-    const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) => this.onStartTask(task, activity);
-    const onStopTask = (task : DataTypes.Task) => this.onStopTask(task);
+    const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) => {
+      return this.onStartTask(task, activity);
+    }
+    const onStopTask = (task : DataTypes.Task) => {
+      return this.onStopTask(task);
+    }
 
     return <div className="page">
       <div className="page-title">Tasks</div>

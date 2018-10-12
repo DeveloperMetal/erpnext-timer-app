@@ -16,5 +16,6 @@ export type TaskListItemProps = {
 
 export type TaskListItemState = {
   from_time : ?Moment,
-  to_time : ?Moment
+  to_time : ?Moment,
+  waiting: boolean
 }

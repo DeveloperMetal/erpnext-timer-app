@@ -14,11 +14,13 @@ installExtension(REACT_DEVELOPER_TOOLS)
   .then(name => {
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+    Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
 
     let mainWindowState = windowStateKeeper({
-      defaultWidth: width * 0.9,
-      defaultHeight: height * 0.9,
+      defaultWidth: 400,
+      defaultHeight: 600,
+      defaultX: width - 400,
+      defaultY: 0
     })
 
     mainWindow = new BrowserWindow({
@@ -26,7 +28,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
       height: mainWindowState.height,
       x: mainWindowState.x,
       y: mainWindowState.y,
-      minWidth: 200,
+      minWidth: 400,
       minHeight: 200,
       titleBarStyle: 'hiddenInset',
       webPreferences: {
@@ -55,14 +57,11 @@ installExtension(REACT_DEVELOPER_TOOLS)
     })
 
     ipcMain.on('getSetting', (event, key, defaultValue) => {
-      console.log('getSettings: ', event, key, defaultValue);
       let result = settings.get(key, defaultValue);
-      console.log('result: ', result);
       event.returnValue = result || '';
     });
 
     ipcMain.on('setSetting', (event, key, value) => {
-      console.log("Set Settings: ", key, value);
       settings.set(key, value);
       event.returnValue = true;
     });

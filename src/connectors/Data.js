@@ -268,7 +268,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .stopTask(task, timestamp, this.state.user.employee_name)
       .then(() => {
-        this.listTasks();
+        return this.listTasks();
       })
       .catch(err => {
         this.throwError(err)

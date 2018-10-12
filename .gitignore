@@ -1,6 +1,7 @@
 /coverage
 /dist
 /release
+/releases
 /node_modules
 npm-debug.log
 .vscode
