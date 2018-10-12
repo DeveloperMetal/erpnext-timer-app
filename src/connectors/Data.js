@@ -79,6 +79,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       tasks: [],
       errors: [],
       activities: [],
+      projects: [],
       actions: {
         ...bindCallbacks(this, [
           "throwError",
@@ -90,6 +91,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "listDayTimeline",
           "updateActiveTimelineBlock",
           "updateTimelineBlock",
+          "setCurrentDate",
+          "newTask"
         ]),
       }
     }
@@ -160,13 +163,22 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       });
   }
 
-  listDayTimeline() : Promise<void> {
+  setCurrentDate( date : Moment ) : void {
+    this.listDayTimeline(date)
+  }
+
+  listDayTimeline(date? : Moment) : Promise<void> {
+
+    if ( !date ) {
+      date = this.state.day;
+    }
 
     return this.connector
-      .listDayTimeline(this.state.day, this.state.tasks)
+      .listDayTimeline(date, this.state.tasks)
       .then((results : DataTypes.TimelineItem[]) => {
         this.setState({
-          timeline: results
+          timeline: results,
+          day: date
         })
         return;
       });
@@ -209,17 +221,28 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }
   }
 
+  newTask(task : DataTypes.Task) {
+    return this.connector.newTask(task)
+      .then(() => {
+        return this.listTasks();
+      })
+      .catch(err => this.throwError(err));
+  }
+
   listTasks() : Promise<void> {
     // always fetch list of available activities, just in case
     // we have new ones while app is running
     return Promise.all([
+      this.connector.listProjects(),
       this.connector.listActivities(),
       this.connector.listTasks(this.state.user.employee_name)
     ])
     .then(results => {
-      let activities = results[0];
-      let tasks = results[1];
+      let projects = results[0];
+      let activities = results[1];
+      let tasks = results[2];
       this.setState({
+        projects,
         activities,
         tasks
       });
@@ -228,9 +251,9 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     .catch(err => this.throwError(err));
   }
 
-  startTask(task : DataTypes.Task, activity : DataTypes.Activity) : void {
+  startTask(task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any> {
     let timestamp = moment();
-    this.connector
+    return this.connector
       .startTask(task, activity, timestamp, this.state.user.employee_name)
       .then(() => {
         this.listTasks();
@@ -240,9 +263,9 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       });
   }
 
-  stopTask(task : DataTypes.Task) : void {
+  stopTask(task : DataTypes.Task) : Promise<any> {
     let timestamp = moment();
-    this.connector
+    return this.connector
       .stopTask(task, timestamp, this.state.user.employee_name)
       .then(() => {
         this.listTasks();

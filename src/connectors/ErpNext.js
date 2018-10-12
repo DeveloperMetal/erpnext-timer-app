@@ -80,6 +80,19 @@ type Task = {
 }
 
 const ProjectFields = ["name", "project_name", "notes", "is_active", "status", "company", "percent_complete", "percent_complete_method", "priority"];
+
+type Project = {
+  name : string, 
+  project_name : string, 
+  notes : string, 
+  is_active : boolean, 
+  status : string, 
+  company : string, 
+  percent_complete : number, 
+  percent_complete_method : string, 
+  priority : string
+}
+
 const Doctypes = {
   Timesheet: "Timesheet",
   TimesheetDetail: "Timesheet Detail",
@@ -548,8 +561,7 @@ const API : DataTypes.ConnectorAPI = {
       .read({
         fields: TimesheetFields,
         filters: [
-          ["start_date", ">=", day_start.format(dateTimeFormat)],
-          ["start_date", "<=", day_end.format(dateTimeFormat)]
+          ["start_date", "between", [day_start.format(dateTimeFormat), day_end.format(dateTimeFormat)]]
         ],
         order_by: "start_date DESC",
         limit_page_length: 1
@@ -571,8 +583,9 @@ const API : DataTypes.ConnectorAPI = {
                 start: moment(d.from_time, dateTimeFormat),
                 end: d.to_time?moment(d.to_time, dateTimeFormat):moment(),
                 task,
-                canDrag: !task.is_running,
-                canResize: !task.is_running
+                is_running: d.to_time?false:true,
+                canDrag: d.to_time?true:false,
+                canResize: d.to_time?true:false
               }
 
               c.push(item);
@@ -601,6 +614,25 @@ const API : DataTypes.ConnectorAPI = {
         return Object.assign({}, item, {
           start: moment(result.from_time, dateTimeFormat),
           end: moment(result.to_time, dateTimeFormat),
+        });
+      });
+  },
+
+  listProjects() : Promise<DataTypes.Project[]> {
+    return frappe.resource("Project")
+      .read({
+        fields: ProjectFields,
+        filters: [
+          ["status", "=", "Open"]
+        ],
+        limit_page_length: 999
+      })
+      .then((result : Project[]) => {
+        return result.map(p => {
+          return {
+            id: p.name,
+            label: p.project_name
+          };
         });
       });
   },
@@ -648,6 +680,7 @@ const API : DataTypes.ConnectorAPI = {
           last_open_timestamp: result.last_open_timestamp,
           is_running: result.is_running || false,
           project: result.task.project,
+          project_id: result.task.project,
           parent: result.task.parent_task,
           parent_label : null,
           tags: (result.task._user_tags || "").split(',').reduce((c,t) => {
@@ -718,7 +751,7 @@ const API : DataTypes.ConnectorAPI = {
             .create({
               start_time: dayStart.format(dateTimeFormat),
               employee: employee_name,
-              time_logs: [buildTimesheetDetail(task.id, task.project, activity, timestamp)],
+              time_logs: [buildTimesheetDetail(task.id, task.project_id, activity, timestamp)],
               status: "Draft"
             })
             .then(result => {
@@ -734,7 +767,7 @@ const API : DataTypes.ConnectorAPI = {
         if ( result.create ) {
           return frappe
           .resource("Timesheet Detail")
-          .create(buildTimesheetDetail(task.id, task.project, activity, timestamp, result.timesheet.name))
+          .create(buildTimesheetDetail(task.id, task.project_id, activity, timestamp, result.timesheet.name))
           .then(() => {
             return timestamp;
           })
@@ -770,6 +803,19 @@ const API : DataTypes.ConnectorAPI = {
         throw new InvalidOperation("Unable to find running timer for this task.")
       });
     
+  },
+
+  newTask(task : DataTypes.Task) : Promise<any> {
+    return frappe.resource("Task")
+      .create({
+        project: task.project_id,
+        subject: task.label,
+        description: task.description
+      })
+      .then((result : any) => {
+        console.log("New task: ", result);
+        return result.name;
+      });
   }
 };
 

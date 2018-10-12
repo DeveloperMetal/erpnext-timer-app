@@ -17,6 +17,10 @@ export type ErrorInfo = {
   remoteTrace : any
 }
 
+export type PageProps = {
+  nav: (path : string) => void
+}
+
 export type Props = {
 
 }
@@ -35,10 +39,16 @@ export type State = {
   timeline : TimelineItem[],
   errors: any[],
   tasks: Task[],
-  activities: Activity[]
+  activities: Activity[],
+  projects: Project[]
 }
 
 export type ResultCallback = (result? : any, err? : Error) => void
+
+export type Project = {
+  id : string,
+  label: string
+}
 
 export type Task = {
   id : string,
@@ -49,6 +59,7 @@ export type Task = {
   is_running : boolean,
   last_open_timestamp : Moment | null,
   project : string,
+  project_id : string,
   parent : string | null,
   parent_label: string | null,
   tags : Array<string>
@@ -59,6 +70,8 @@ export type TimelineItem = {
   start: Moment,
   end: Moment,
   task: Task,
+  color?: string,
+  is_running?: boolean,
   canResize?: boolean,
   canDrag?: boolean
 }
@@ -81,7 +94,9 @@ export type ConnectorAPI = {
   listActivities() : Promise<Activity[]>,
   listDayTimeline(day: Moment, tasks : Task[]) : Promise<TimelineItem[]>,
   updateTimelineItem(item : TimelineItem) : Promise<TimelineItem>,
+  listProjects() : Promise<Project[]>,
   listTasks(employee_name : string) : Promise<Task[]>,
+  newTask(task : Task) : Promise<any>,
   startTask(
     task : Task, 
     activity : Activity,

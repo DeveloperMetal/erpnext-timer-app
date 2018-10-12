@@ -12,6 +12,7 @@ import VerticalNav from "bloom-nav-column";
 // Components
 import TaskPage from "./Tasks";
 import TimelinePage from "./TimelinePage";
+import AddTaskPage from "./AddTaskPage";
 
 const iconSize : number = 24;
 
@@ -87,8 +88,9 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         onPathChange={onPathChange}
       />
       <div id='content'>
-        { activePath === "timesheet/tasks" && ( <TaskPage /> )}
-        { activePath === "timesheet" && ( <TimelinePage />)}
+        { activePath === "timesheet/tasks" && ( <TaskPage nav={onPathChange} /> ) }
+        { activePath === "timesheet" && ( <TimelinePage nav={onPathChange} /> ) }
+        { activePath === "timesheet/new-task" && ( <AddTaskPage nav={onPathChange } /> ) }
       </div>
     </div>
   }

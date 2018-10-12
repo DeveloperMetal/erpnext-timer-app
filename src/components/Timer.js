@@ -54,7 +54,7 @@ export class Timer extends React.PureComponent<Props, State> {
   }
 
   render() {
-    const { format = "h:mm:ss a" } = this.props;
+    const { format = this.state.timerId?"h:mm:ss a":"h:mm a" } = this.props;
     return <React.Fragment>{this.state.time.format(format)}</React.Fragment>
   }
 }

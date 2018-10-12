@@ -2,7 +2,8 @@ import * as DataTypes from "../connectors/Data.flow";
 import type Moment from "moment";
 
 export type TaskListProps = {
-  backend : DataTypes.State
+  backend : DataTypes.State,
+  nav: (path : string) => void
 }
 
 export type TaskListState = {

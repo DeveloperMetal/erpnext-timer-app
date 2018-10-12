@@ -177,7 +177,9 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
   onStartTask(task : DataTypes.Task, activity : DataTypes.Activity) {
     const { backend } = this.props;
 
-    backend.actions.startTask(task, activity);
+    backend.actions.startTask(task, activity).then(() => {
+      this.props.nav("timesheet");
+    })
   }
 
   onStopTask(task : DataTypes.Task) {
@@ -190,8 +192,6 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
 
     const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) => this.onStartTask(task, activity);
     const onStopTask = (task : DataTypes.Task) => this.onStopTask(task);
-
-    console.log(this.props.backend);
 
     return <div className="page">
       <div className="page-title">Tasks</div>
@@ -208,9 +208,9 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
   }
 }
 
-export function TaskPage() {
+export function TaskPage(props : DataTypes.PageProps) {
   return <BackendConsumer>
-    {backend => <TaskList backend={backend} />}
+    {backend => <TaskList backend={backend} {...props} />}
   </BackendConsumer>
 }
 
