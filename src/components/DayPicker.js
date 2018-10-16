@@ -69,12 +69,14 @@ class DateSelect extends React.PureComponent<DateSelectProps, DateSelectState> {
   render() {
     const { date } = this.props;
     const onEdit = () => this.onEdit();
-    const onDateChange = (date : Date) => this.onDateChange(date);
+    const onDateChange = (date : Date, isUserChange : boolean) => this.onDateChange(date);
     const onInputBlur = (e) => {
-      e.target.removeEventListener("blur", onInputBlur);
-      this.setState({
-        editing: false
-      })
+      setTimeout(() => {
+        e.target.removeEventListener("blur", onInputBlur);
+        this.setState({
+          editing: false
+        })
+      }, 200);
     }
 
     return <React.Fragment>
@@ -114,9 +116,8 @@ const DayGroup = withContentRect('bounds')(({
     measureRef, 
     measure, 
     contentRect, 
-    date, 
+    date,
     size, 
-    activeDay, 
     onDayPick 
   }) => {
 
@@ -125,7 +126,8 @@ const DayGroup = withContentRect('bounds')(({
   }
 
   let days : Moment[] = [];
-  let weekStart : Moment = date.clone();
+  let weekStart : Moment = moment(date).startOf("week").subtract(1, 'days');
+  let activeDay = date.day();
   for (var i = 0; i < 7; i++) {
     let day = weekStart.add(1, 'days');
     days.push((<Day
@@ -141,11 +143,11 @@ const DayGroup = withContentRect('bounds')(({
     <DateSelect onChange={onDateChange} date={date} />
     <div className="day-nav">
       <Button icon="caret-left" minimal={true} onClick={() => {
-        onDayPick(date.clone().add(activeDay + 1, 'days').subtract(1, 'days'));
+        onDayPick(date.clone().subtract(1, 'days'));
       }} />
       <div className="days">{days}</div>
       <Button icon="caret-right" minimal={true} onClick={() => {
-        onDayPick(date.clone().add(activeDay + 1, 'days').add(1, 'days'));
+        onDayPick(date.clone().add(1, 'days'));
       }} />
     </div>
   </div>
@@ -162,14 +164,10 @@ export class DayPicker extends React.PureComponent<Props, State> {
 
   render() {
 
-    const weekDate = this.props.date.clone().startOf('week').subtract(1, 'days');
-    const activeDay = this.props.date.day();
-
     return <div className="daypicker">
       <DayGroup
         onDayPick={this.props.onChange}
-        date={weekDate}
-        activeDay={activeDay}
+        date={this.props.date.clone()}
         size={this.state.size}
         bounds
         onResize={(contentRect) => {
