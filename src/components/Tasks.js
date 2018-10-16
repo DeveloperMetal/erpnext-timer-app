@@ -240,14 +240,16 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
 
     return <div className="page">
       <div className="page-title">Tasks</div>
-      <div className="task-list">
-        { this.props.backend.tasks.map(t => <TaskListItem 
-            key={t.id} 
-            task={t}
-            activities={this.props.backend.activities || []}
-            onStartTask={onStartTask}
-            onStopTask={onStopTask}
-          />) }
+      <div className="page-content">
+        <div className="task-list">
+          { this.props.backend.tasks.map(t => <TaskListItem 
+              key={t.id} 
+              task={t}
+              activities={this.props.backend.activities || []}
+              onStartTask={onStartTask}
+              onStopTask={onStopTask}
+            />) }
+        </div>
       </div>
     </div>
   }

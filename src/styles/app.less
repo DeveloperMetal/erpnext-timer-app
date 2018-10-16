@@ -68,10 +68,12 @@ html, body, #root {
 
         .page {
             flex: 1 1 auto;
-            padding: 1em;
+            padding: 1em 0 0 0;
             margin: 0;
             background-color: #f1f1f1;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
 
             .page-title {
                 font-size: 1.5em;
@@ -89,6 +91,7 @@ html, body, #root {
                 padding-top: 1em;
                 z-index: 1;
                 overflow-y: auto;
+                flex: 1 1 auto;
             }
 
             .page-actions {
@@ -178,6 +181,7 @@ html, body, #root {
 
 .task-list {
     overflow: auto;
+    padding: 0 1em;
 
     .task-list-item {
         display: flex;
