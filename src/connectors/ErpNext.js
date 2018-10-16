@@ -561,7 +561,8 @@ const API : DataTypes.ConnectorAPI = {
       .read({
         fields: TimesheetFields,
         filters: [
-          ["start_date", "between", [day_start.format(dateTimeFormat), day_end.format(dateTimeFormat)]]
+          ["start_date", ">=", day_start.format(dateFormat)],
+          ["end_date", "<=", day_end.format(dateFormat)]
         ],
         order_by: "start_date DESC",
         limit_page_length: 1
@@ -731,8 +732,8 @@ const API : DataTypes.ConnectorAPI = {
         .read({
           fields: TimesheetFields,
           filters: [
-            ["start_date", ">=", dayStart.format(dateTimeFormat)],
-            ["start_date", "<=", dayEnd.format(dateTimeFormat)]
+            ["start_date", ">=", dayStart.format(datetime)],
+            ["end_date", "<=", dayEnd.format(datetime)]
           ],
           order_by: "start_date DESC",
           limit_page_length: 1

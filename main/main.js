@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, Menu, ipcMain } from 'electron'
+import { app, BrowserWindow, screen, Menu, Tray, ipcMain } from 'electron'
 import template from './menu-template.js'
 import windowStateKeeper from 'electron-window-state'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
@@ -15,6 +15,8 @@ installExtension(REACT_DEVELOPER_TOOLS)
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
     Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
+
+    //let tray = new Tray();
 
     let mainWindowState = windowStateKeeper({
       defaultWidth: 400,

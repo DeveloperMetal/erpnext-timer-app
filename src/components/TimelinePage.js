@@ -116,12 +116,16 @@ export class TimelineComp extends React.PureComponent<TimelineCompProps, Timelin
     const { backend } = this.props;
     const onTimeBlockChange = (item : DataTypes.TimelineItem) => this.handleTimeBlockChange(item);
 
+    console.log(backend.day.format());
+
     return <div className="page timeline">
       <div className="page-title">Timeline</div>
       <DayPicker date={backend.day} onChange={backend.actions.setCurrentDate} />
       <div className="timeline-list">
         <Timeline 
           zoom={this.state.zoom}
+          startTime={moment(backend.day).startOf("day")}
+          endTime={moment(backend.day).endOf("day")}
           timeHeader="Time"
           contentHeader="Timesheet"
           items={this.props.backend.timeline}

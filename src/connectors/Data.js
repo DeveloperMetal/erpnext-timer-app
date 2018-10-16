@@ -176,6 +176,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .listDayTimeline(date, this.state.tasks)
       .then((results : DataTypes.TimelineItem[]) => {
+        console.log("got list day timeline")
+        console.log("date: ", date.format());
         this.setState({
           timeline: results,
           day: date
