@@ -30,7 +30,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
       y: mainWindowState.y,
       minWidth: 400,
       minHeight: 200,
-      titleBarStyle: 'hiddenInset',
+      //titleBarStyle: 'hiddenInset',
       webPreferences: {
         webSecurity: false,
       },

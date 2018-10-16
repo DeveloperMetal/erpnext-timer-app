@@ -41,7 +41,6 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
 
     return <BackendProvider>
       { /* We separate the display app function from login conditions to keep logic tree light */ }
-
       { this.state.displayApp && (
           <AppWithNavigation />
       )}
