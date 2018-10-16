@@ -104,13 +104,20 @@ function encode(item : string) : string {
   return JSON.stringify(item)
 }
 
-function queryStringBuilder(args : any, encodeValues : boolean = false) : string {
+function queryStringBuilder(args : any, encodeValues : any = false) : string {
   if (!args) {
     return "";
   }
 
   let params = [];
-  params = Object.keys(args).map(key => `${key}=${encodeURIComponent(encodeValues ? encode(args[key]) : args[key])}`)
+  let shouldEncode;
+  if ( typeof encodeValues === "object" ) {
+    shouldEncode = (key) => (key in encodeValues)?encodeValues[key]:true
+  } else {
+    shouldEncode = (key) => encodeValues;
+  }
+
+  params = Object.keys(args).map(key => `${key}=${encodeURIComponent(shouldEncode(key) ? encode(args[key]) : args[key])}`)
   return params.join("&");
 }
 
@@ -122,7 +129,7 @@ function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
   }
 
 
-  let message = "Unexpected error",
+  let message = null,
     server_messages = [],
     remoteTrace = [];
 
@@ -154,11 +161,16 @@ function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
     if ('exc' in err.response.data) {
       remoteTrace = JSON.parse(err.response.data.exc);
       remoteTrace = remoteTrace.map(x => x.trim().split('\n'));
+      console.log("ERROR? ", remoteTrace);
       if (!message && remoteTrace.length > 0) {
         message = remoteTrace.map(x => x[x.length - 1]).join("\n");
       }
     }
 
+  }
+
+  if ( !message ) {
+    message = "Unexpected error";
   }
 
   errorInfo = Object.assign({}, { message, server_messages, remoteTrace }, errorInfo);
@@ -259,7 +271,7 @@ class FrappeResource {
   }
 
   read(args : any) : Promise<any> {
-    let argsStr : string = queryStringBuilder(args, true);
+    let argsStr : string = queryStringBuilder(args, { parent: false });
 
     return axios.get(`${this.host}/api/resource/${this.resource}?${argsStr}`)
       .then(response => {
@@ -369,7 +381,8 @@ function querySheetDetails(sheet : Timesheet) : QuerySheetDetailsResult {
         ["parent", "=", sheet.name],
         ["parenttype", "=", "Timesheet"],
         ["parentfield", "=", "time_logs"]
-      ]
+      ],
+      parent: "Timesheet"
     })
     .then(details => {
       return { timesheet: sheet, details: details }
@@ -390,7 +403,8 @@ function sumTaskHours(task : Task) : Promise<SumTaskHoursResult> {
       filters: [
         ["task", "=", task.name]
         ["hours", ">", 0]
-      ]
+      ],
+      parent: "Timesheet"
     })
     .then(result => {
       return { 
@@ -441,7 +455,8 @@ function findTimesheetDetailsByTask(task_name : string) : Promise<TimesheetDetai
       fields: TimesheetDetailFields,
       filters: [
         ["task", "=", task_name]
-      ]
+      ],
+      parent: "Timesheet"
     });
 }
 
@@ -732,8 +747,8 @@ const API : DataTypes.ConnectorAPI = {
         .read({
           fields: TimesheetFields,
           filters: [
-            ["start_date", ">=", dayStart.format(datetime)],
-            ["end_date", "<=", dayEnd.format(datetime)]
+            ["start_date", ">=", dayStart.format(dateFormat)],
+            ["end_date", "<=", dayEnd.format(dateFormat)]
           ],
           order_by: "start_date DESC",
           limit_page_length: 1
