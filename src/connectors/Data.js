@@ -115,7 +115,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       }
 
       if ( "remoteTrace" in err.info ) {
-        err.info.remoteTrace.forEach(rt => console.error(rt.join("\n")));
+        err.info.remoteTrace.forEach(rt => console.error(rt.join?rt.join("\n"):rt));
       }
     }
 
