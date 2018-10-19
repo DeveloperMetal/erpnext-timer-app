@@ -89,6 +89,7 @@ export default class Login extends React.PureComponent {
             rightElement={lockButton}
             type={this.state.showPassword ? "text" : "password"} 
             onChange={this.handlePwdChange.bind(this) }
+            onKeyPress={(e) => { if ( e.key === 'Enter' ) this.handleLoginClick(); } }
           />
         </FormGroup>
         <Button fill={true} text="Login" onClick={ this.handleLoginClick.bind(this) } icon="key" />

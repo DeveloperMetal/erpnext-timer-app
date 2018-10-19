@@ -1,5 +1,7 @@
 // @flow
 
+import { trackError, trackUser, trackExtra } from "../tracking";
+
 // Flow types
 import * as DataTypes from "./Data.flow";
 import type Moment from "moment";
@@ -107,7 +109,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
   }
 
   throwError(err : ConnectorError, done? : (Error) => void) {
-    console.error("ERROR IN BACKEND CALL: ", err);
+    console.error(err);
+    trackError(err);
 
     if ( "info" in err && err.info ) {
       if ( "server_messages" in err.info ) {
@@ -122,7 +125,6 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     this.setState((prevState : DataTypes.State) => {
       return { errors: [...prevState.errors, err] };
     }, () => {
-      console.log("Error set?", this.state.errors);
       if ( typeof done === "function" ) {
         done(err);
       }
@@ -137,6 +139,15 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }, () => {
       this.connector.login(auth)
         .then(( user : DataTypes.User ) => {
+
+          trackUser({
+            username: auth.usr
+          });
+
+          trackExtra({
+            "employee_name": user
+          });
+
           this.setState({
             attemptingLogin: false,
             loggedIn: true,
@@ -176,8 +187,6 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .listDayTimeline(date, this.state.tasks)
       .then((results : DataTypes.TimelineItem[]) => {
-        console.log("got list day timeline")
-        console.log("date: ", date.format());
         this.setState({
           timeline: results,
           day: date
@@ -204,8 +213,6 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       // update local data so our UI doesn't freeze while network request
       // happens.
       timeline.splice(idx, 1, item);
-      console.log("Update timeblock: ")
-      console.dir(item);
       this.setState({
         timeline
       });

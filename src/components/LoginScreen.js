@@ -1,6 +1,6 @@
 // @flow
 
-import { ipcRenderer } from "electron";
+import { ipcRenderer, remote } from "electron";
 
 // Flow types
 import * as Types from "./Types.flow";
@@ -14,6 +14,8 @@ import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaste
 // Components
 import Login from "./Login";
 
+const version = remote.app.getVersion();
+
 export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.State> {
 
   constructor(props : LoginTypes.Props) {
@@ -24,13 +26,18 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
         host: ipcRenderer.sendSync('getSetting', 'host'),
         usr: ipcRenderer.sendSync('getSetting', 'usr'),
         pwd: ipcRenderer.sendSync('getSetting', 'pwd'),
-      }
+      },
+      autoLogin: ipcRenderer.sendSync('getSetting', 'autoLogin', false),
     }
   }
 
   autoLogin() {
     this.props.backend.actions.login(this.state.auth, (loggedIn, err) => {
       if ( loggedIn ) {
+        ipcRenderer.synd('setSetting', 'host', this.state.auth.host);
+        ipcRenderer.synd('setSetting', 'usr', this.state.auth.usr);
+        ipcRenderer.synd('setSetting', 'pwd', this.state.auth.pwd);
+        
         if ( typeof this.props.onLoggedIn === "function") {
           this.props.onLoggedIn(this.state.auth);
         } else {
@@ -43,7 +50,9 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
   }
 
   componentDidMount() {
-    this.autoLogin();
+    if ( this.state.autoLogin ) {
+      this.autoLogin();
+    }
   }
 
   render() {
@@ -77,7 +86,7 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
           </div>
         </div>
       </div>
-
+      <div id="app-version">v{version}</div>
     </React.Fragment> 
   }
 }

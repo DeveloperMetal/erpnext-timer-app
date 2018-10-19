@@ -161,7 +161,6 @@ function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
     if ('exc' in err.response.data) {
       remoteTrace = JSON.parse(err.response.data.exc);
       remoteTrace = remoteTrace.map(x => x.trim().split('\n'));
-      console.log("ERROR? ", remoteTrace);
       if (!message && remoteTrace.length > 0) {
         message = remoteTrace.map(x => x[x.length - 1]).join("\n");
       }
@@ -261,8 +260,6 @@ class FrappeResource {
   create(data : any) : Promise<any> {
     return axios.post(`${this.host}/api/resource/${this.resource}`, data)
       .then(response => {
-        console.log(`Create ${this.resource}`, data);
-        console.log('Response: ', response);
         return response.data;
       })
       .catch(err => {
@@ -527,7 +524,6 @@ function resolveTaskParent(task : DataTypes.Task) : Promise<DataTypes.Task> {
       ]
     })
     .then(result => {
-      console.log(result);
       if ( result.length > 0 ) {
         task.parent_label = result[0].subject;
       }
@@ -583,7 +579,6 @@ const API : DataTypes.ConnectorAPI = {
         limit_page_length: 1
       })
       .then((results) => {
-        console.log("listDayTimeline: ", results);
         if ( results.length > 0 ) {
           return querySheetDetails(results[0]);
         }
@@ -771,7 +766,6 @@ const API : DataTypes.ConnectorAPI = {
               status: "Draft"
             })
             .then(result => {
-              console.log("After timesheet creation: ", result);
               return { timesheet: result.data, create: false };
             })
         } else {
@@ -829,7 +823,6 @@ const API : DataTypes.ConnectorAPI = {
         description: task.description
       })
       .then((result : any) => {
-        console.log("New task: ", result);
         return result.name;
       });
   }

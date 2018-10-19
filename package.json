@@ -4,9 +4,11 @@
   "version": "1.0.0",
   "description": "An app to track work hours on erpnext.",
   "main": "main/index.js",
-  "private": true,
+  "private": false,
   "scripts": {
     "electron-rebuild": "electron-rebuild -f -w desktopIdle",
+    "update-sentry": "node sentry-symbols.js",
+    "dist": "nwb clean && nwb build && electron-builder -p always",
     "flow": "flow",
     "flow-watch": "watch \"cls && flow\" ./src --filter=./flow-filter.js --wait=1 --interval=1 --ignoreDotFiles",
     "clean": "nwb clean",
@@ -39,6 +41,7 @@
     "@blueprintjs/datetime": "^3.3.0",
     "@blueprintjs/select": "^3.1.0",
     "@blueprintjs/table": "^3.1.0",
+    "@sentry/electron": "^0.12.1",
     "bloom-conditionals": "^1.0.1",
     "bloom-day-timeline": "ssh://git@github.com:DigiThinkIT/bloom-day-timeline.git",
     "bloom-nav-column": "ssh://git@github.com:DigiThinkIT/bloom-nav-column.git",
@@ -47,6 +50,7 @@
     "desktop-idle": "^1.1.1",
     "electron-devtools-installer": "^2.2.4",
     "electron-settings": "^3.2.0",
+    "electron-updater": "^3.1.2",
     "electron-window-state": "^4.1.1",
     "emotion": "^9.2.4",
     "esm": "^3.0.55",
@@ -69,6 +73,7 @@
     "bracketSpacing": true
   },
   "devDependencies": {
+    "@sentry/wizard": "^0.12.1",
     "babel-flow-types": "^1.2.3",
     "babel-preset-env": "^1.7.0",
     "del-cli": "^1.1.0",
