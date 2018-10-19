@@ -3,7 +3,7 @@ import { ipcRenderer } from "electron";
 
 // Third party Components
 import React from "react";
-import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaster, Toast } from "@blueprintjs/core";
+import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaster, Toast, ProgressBar } from "@blueprintjs/core";
 import cls from "classnames";
 
 import { Condition, When, Else } from "bloom-conditionals";
@@ -26,14 +26,48 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
     super(props);
 
     this.state = {
-      displayApp: false
+      displayApp: false,
+      updateProgress: null,
+      updateReady: false
     }
+
+    ipcRenderer.on("update-download-progress", (e, p) => {
+      this.setState({
+        updateProgress: p
+      })
+    });
+
+    ipcRenderer.on("update-ready", (e) => {
+      this.setState({
+        updateReady: true
+      })
+    });
+
   }
+
+  installUpdate() {
+    ipcRenderer.send("update-install");
+  }
+  
 
   onLoggedIn(auth : DataTypes.Auth) {
     this.setState({
       displayApp: true
     });
+  }
+
+  renderUpdaterProgress() {
+    const { updateProgress, updateReady } = this.state;
+
+    if ( updateReady ) {
+      return <div id="updater-bar"><Button fill intent={Intent.SUCCESS} text="New version ready. Restart Now!" icon="issue" onClick={() => this.installUpdate()} /></div>
+    }
+
+    if ( !updateProgress ) {
+      return [];
+    }
+
+    return <div id="updater-bar"><ProgressBar  value={updateProgress.percent / 100} /></div>
   }
 
   render() {
@@ -68,6 +102,8 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
             </Toaster>
         }}
       </BackendConsumer>
+
+      { this.renderUpdaterProgress() }
   
     </BackendProvider>
   }

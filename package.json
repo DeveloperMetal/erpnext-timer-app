@@ -1,14 +1,13 @@
 {
   "name": "erpnext-timer-app",
   "productName": "ErpNext Timer",
-  "version": "1.0.1",
+  "version": "1.0.10",
   "description": "An app to track work hours on erpnext.",
   "main": "main/index.js",
   "private": false,
   "scripts": {
-    "electron-rebuild": "electron-rebuild -f -w desktopIdle",
     "update-sentry": "node sentry-symbols.js",
-    "dist": "nwb clean && nwb build && electron-builder -p always",
+    "ship": "nwb clean && nwb build && electron-builder -p always",
     "flow": "flow",
     "flow-watch": "watch \"cls && flow\" ./src --filter=./flow-filter.js --wait=1 --interval=1 --ignoreDotFiles",
     "clean": "nwb clean",
@@ -17,17 +16,24 @@
     "test": "nwb test",
     "test:watch": "nwb test --server",
     "build": "nwb clean && nwb build && electron-builder",
-    "postinstall": "yarn electron-rebuild"
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.digithinkit.timerapp",
+    "files": [
+      "!.electron-symbols/**",
+      "!releases/**",
+      "!test/**",
+      "!*.log",
+      "!*.dist"
+    ],
     "directories": {
       "output": "releases",
       "app": "."
     },
     "publish": {
       "provider": "s3",
-      "bucket": "com.digithinkit.binaries",
+      "bucket": "timer-app",
       "acl": "public-read"
     },
     "dmg": {},
@@ -49,6 +55,7 @@
     "classnames": "^2.2.6",
     "desktop-idle": "^1.1.1",
     "electron-devtools-installer": "^2.2.4",
+    "electron-log": "^2.2.17",
     "electron-settings": "^3.2.0",
     "electron-updater": "^3.1.2",
     "electron-window-state": "^4.1.1",

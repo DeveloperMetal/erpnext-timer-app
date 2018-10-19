@@ -12,19 +12,21 @@ import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-insta
 import settings from 'electron-settings';
 import desktopIdle from 'desktop-idle';
 import path from 'path';
+import log from 'electron-log';
 
 const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()}/dist/index.html`
 
 let mainWindow
 
-autoUpdater.logger = console.log;
-
+autoUpdater.logger = log;
+autoUpdater.autoDownload = true;
 
 installExtension(REACT_DEVELOPER_TOOLS)
   .then(name => {
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
+    //Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
     //let tray = new Tray();
 
@@ -53,11 +55,15 @@ installExtension(REACT_DEVELOPER_TOOLS)
     mainWindowState.manage(mainWindow)
     mainWindow.loadURL(windowUrl)
 
-    if (DEV) {
-      mainWindow.webContents.once('dom-ready', () => {
+    mainWindow.webContents.once('dom-ready', () => {
+      if (DEV) {
         mainWindow.webContents.openDevTools()
-      })
-    }
+      } else {
+        mainWindow.webContents.send("message", "Begin App...");
+        autoUpdater.checkForUpdatesAndNotify();
+      }
+    
+    })
 
     mainWindow.on('closed', () => {
       mainWindow = null
@@ -70,6 +76,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
    })
     autoUpdater.on('update-available', (info) => {
       Sentry.captureMessage("Update available...");
+      mainWindow.webContents.send("update-available");
     })
     autoUpdater.on('update-not-available', (info) => {
       Sentry.captureMessage("Update not available...");
@@ -84,13 +91,13 @@ installExtension(REACT_DEVELOPER_TOOLS)
       log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
       log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
       mainWindow.webContents.send("message", log_message);
+      mainWindow.webContents.send("update-download-progress", progressObj);
     })
 
     autoUpdater.on('update-downloaded', (info) => {
       mainWindow.webContents.send("message", "Update downloaded");
+      mainWindow.webContents.send("update-ready");
       Sentry.captureMessage("Update downloaded and ready to install!");
-      autoUpdater.checkForUpdatesAndNotify(); // This version waits for app to quit before installing new version.
-      //autoUpdater.quitAndInstall(); // This version installs immediately without waiting on user.
     });
 
     ipcMain.on('getIdleTime', (event, arg) => {
@@ -104,6 +111,11 @@ installExtension(REACT_DEVELOPER_TOOLS)
 
     ipcMain.on('setSetting', (event, key, value) => {
       settings.set(key, value);
+      event.returnValue = true;
+    });
+
+    ipcMain.on('update-install', (event) => {
+      autoUpdater.quitAndInstall();
       event.returnValue = true;
     });
 
@@ -121,11 +133,6 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow()
   }
-})
-
-app.on('ready', () => {
-  mainWindow.webContents.send("message", "Begin App...");
-  autoUpdater.checkForUpdates();
 })
 
 process.on('uncaughtException', console.log)

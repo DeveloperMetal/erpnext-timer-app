@@ -29,6 +29,7 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
       },
       autoLogin: ipcRenderer.sendSync('getSetting', 'autoLogin', false),
     }
+
   }
 
   autoLogin() {
@@ -61,7 +62,7 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
       if ( loggedIn ) {
         onLoggedIn(auth)
       } else {
-        console.log(err);
+        console.error(err);
       }
     });
 

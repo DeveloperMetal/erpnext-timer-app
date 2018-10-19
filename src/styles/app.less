@@ -22,6 +22,10 @@ html, body, #root {
     background: transparent;
 }
 
+#root {
+    display: flex;
+    flex-direction: column;
+}
 
 #app-version {
     text-align: center;
@@ -32,11 +36,17 @@ html, body, #root {
     right: 10px;
 }
 
+#updater-bar {
+    flex: 0 0 auto;
+    background-color: #394b59;
+}
+
 #app {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: row;
+    flex: 1 1 auto;
 
     &.bp3-dark {
         background-color: #394b59;
