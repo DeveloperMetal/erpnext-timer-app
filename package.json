@@ -1,7 +1,7 @@
 {
   "name": "erpnext-timer-app",
   "productName": "ErpNext Timer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An app to track work hours on erpnext.",
   "main": "main/index.js",
   "private": false,
