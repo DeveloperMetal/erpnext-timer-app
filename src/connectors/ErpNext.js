@@ -393,6 +393,47 @@ type SumTaskHoursResult = {
   last_open_timestamp: Moment | null
 }
 
+/**
+ * Finds all timesheet details with open timers(including submitted ones)
+ */
+function findRunningTimesheetDetailsByTask(task : Task) {
+  // we can't query empty datetime from rest api due to bug in erpnext
+  // so we have to find all timesheet details referencing our task and pick out
+  // the open one from the list.
+  return frappe.resource("Timesheet Detail")
+    .read({
+      fields: ["name", "to_time"],
+      filters: [
+        ["task", "=", task.name],
+      ],
+      parent: "Timesheet"
+    })
+    .then(results => {
+      return results.filter(d => !d.to_time).map(d => d.name);
+    })
+    .then(results => {
+      return Promise.all(results.map(d => frappe
+        .resource("Timesheet Detail")
+        .read({
+          fields: TimesheetDetailFields,
+          filters: [
+            ["name", "IN", results]
+          ],
+          parent: "Timesheet"
+        })
+      ));
+    })
+    .then(results => {
+      // reduce results to NOT include null results
+      return results.reduce((c, res) => {
+        if ( res.length > 0 ) {
+          c.push(res[0])
+        }
+        return c;
+      }, []);
+    })
+}
+
 function sumTaskHours(task : Task) : Promise<SumTaskHoursResult> {
   return frappe.resource("Timesheet Detail")
     .read({
@@ -456,6 +497,8 @@ function findTimesheetDetailsByTask(task_name : string) : Promise<TimesheetDetai
       parent: "Timesheet"
     });
 }
+
+
 
 function findRunningTimesheetDetails(employee_name? : string) : Promise<QuerySheetDetailsResult[]> {
   // NOTE: There is an issue with querying NULL or "" empty values on datetime fields
@@ -794,23 +837,51 @@ const API : DataTypes.ConnectorAPI = {
       employee_name : string
     ) {
 
-    return findRunningTimesheetDetails(employee_name)
+    return findRunningTimesheetDetailsByTask(task)
       .then(results => {
-        if ( results.length != 0 && results[0].details.length != 0 ) {
-          let result = results[0];
-          let detail = result.details[0];
-          let from_time = moment(detail.from_time, dateTimeFormat);
-          let ms = moment.duration(
-              timestamp.diff(from_time)
-            ).asMilliseconds();
-          return frappe.resource("Timesheet Detail")
-            .update(detail.name, {
-              to_time: timestamp.format(dateTimeFormat),
-              hours: ms / 3600000
-            });
+        if ( results.length != 0 ) {
+          let detail = results[0];
+
+          return frappe.resource("Timesheet")
+            .read({
+              fields: TimesheetFields,
+              filters: [
+                ["name", "=", detail.parent]
+              ]
+            })
+            .then(result => {
+              return {
+                detail,
+                timesheet: (result.length > 0)?result[0]:null
+              };
+            })
         }
 
-        throw new InvalidOperation("Unable to find running timer for this task.")
+        return null;
+      })
+      .then(result => {
+
+        if ( !result ) {
+          throw new InvalidOperation("Unable to find running timer for this task.")
+        }
+
+        let detail = result.detail;
+        let timesheet = result.timesheet;
+
+        if ( timesheet.status != 'Draft' ) {
+          throw new InvalidOperation(`Oh oh, there is an invalid submitted Timesheet ${timesheet.name}. \nPlease contact your administrator to correct this. \nUnable to stop timer.`, null, null, 0);
+        }
+
+        let from_time = moment(detail.from_time, dateTimeFormat);
+        let ms = moment.duration(
+            timestamp.diff(from_time)
+          ).asMilliseconds();
+
+        return frappe.resource("Timesheet Detail")
+          .update(detail.name, {
+            to_time: timestamp.format(dateTimeFormat),
+            hours: ms / 3600000
+          });
       });
     
   },

@@ -38,7 +38,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
             {
               path: "tasks",
               label: "Tasks",
-              icon: <Icon icon="issue" iconSize={iconSize} />,
+              icon: <Icon icon="timeline-events" iconSize={iconSize} />,
             },
             {
               path: "new-task",
@@ -51,7 +51,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         {
           path: "settings",
           label: "Settings",
-          icon: <Icon icon="settings" iconSize={iconSize} />,
+          icon: <Icon icon="cog" iconSize={iconSize} />,
         }
   
       ]

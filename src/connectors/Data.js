@@ -22,12 +22,12 @@ export class ConnectorError extends Error {
   message: string;
   original: ?Error;
 
-  constructor(message : string, info? : DataTypes.ErrorInfo, error? : Error) {
+  constructor(message : string, info? : DataTypes.ErrorInfo, error? : Error, timeout : number = 10000) {
     super(message);
     this.info = info;
     this.icon = 'globe-network';
     this.intent = 'DANGER';
-    this.timeout = 5000;
+    this.timeout = timeout;
     // track inner errors that caused this one to happen
     if (error) {
       this.original = error;
