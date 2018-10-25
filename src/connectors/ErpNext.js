@@ -396,7 +396,7 @@ type SumTaskHoursResult = {
 /**
  * Finds all timesheet details with open timers(including submitted ones)
  */
-function findRunningTimesheetDetailsByTask(task : Task) {
+function findRunningTimesheetDetailsByTask(task : DataTypes.Task) {
   // we can't query empty datetime from rest api due to bug in erpnext
   // so we have to find all timesheet details referencing our task and pick out
   // the open one from the list.
@@ -404,7 +404,7 @@ function findRunningTimesheetDetailsByTask(task : Task) {
     .read({
       fields: ["name", "to_time"],
       filters: [
-        ["task", "=", task.name],
+        ["task", "=", task.id],
       ],
       parent: "Timesheet"
     })
@@ -432,59 +432,6 @@ function findRunningTimesheetDetailsByTask(task : Task) {
         return c;
       }, []);
     })
-}
-
-function sumTaskHours(task : Task) : Promise<SumTaskHoursResult> {
-  return frappe.resource("Timesheet Detail")
-    .read({
-      fields: ["sum(hours) as hours"],
-      filters: [
-        ["task", "=", task.name]
-        ["hours", ">", 0]
-      ],
-      parent: "Timesheet"
-    })
-    .then(result => {
-      return { 
-        hours: result.hours, 
-        task
-      };
-    });
-}
-
-function sumTaskHoursAndCheckOpen(task : Task) : Promise<SumTaskHoursResult> {
-  let sumResult : SumTaskHoursResult;
-  let lastOpenTimestamp : Moment;
-  let total_ms : number = 0;
-  return sumTaskHours(task)
-    .then(result => {
-      sumResult = result;
-      return findTimesheetDetailsByTask(task.name);
-    })
-    .then((details : TimesheetDetail[]) => {
-      return details.reduce((acc, detail) => {
-        if ( !detail.to_time ) {
-          acc.push(detail);
-          let from_time : Moment = moment(detail.from_time, dateTimeFormat);
-          if ( !lastOpenTimestamp || from_time.after(lastOpenTimestamp) ) {
-            lastOpenTimestamp = moment(from_time);
-          }
-        } else {
-          let from_time = moment(detail.from_time, dateTimeFormat);
-          let to_time = moment(detail.to_time, dateTimeFormat);
-          // should we count by the second? or millisecond even?
-          let duration = moment.duration(to_time.diff(from_time)).asMilliseconds();
-          total_ms += duration;
-        }
-        return acc;
-      }, []);
-    })
-    .then((openDetails => {
-      sumResult.is_running = openDetails.length > 0;
-      sumResult.last_open_timestamp = lastOpenTimestamp;
-      sumResult.hours = total_ms / 3600000;
-      return sumResult;
-    }))
 }
 
 function findTimesheetDetailsByTask(task_name : string) : Promise<TimesheetDetail[]> {
@@ -559,11 +506,11 @@ function findRunningTimesheetDetails(employee_name? : string) : Promise<QueryShe
 }
 
 function resolveTaskParent(task : DataTypes.Task) : Promise<DataTypes.Task> {
-  if ( task.parent ) {
+  if ( task.parent_id ) {
     return frappe.resource("Task").read({
       fields: ["subject"],
       filters: [
-        ["name", "=", task.parent]
+        ["name", "=", task.parent_id]
       ]
     })
     .then(result => {
@@ -604,51 +551,37 @@ const API : DataTypes.ConnectorAPI = {
   },
 
   listDayTimeline(
-      day : Moment, 
-      tasks : DataTypes.Task[]
+      day : Moment
     ) : Promise<DataTypes.TimelineItem[]> {
     
     let day_start = moment(day).startOf("day");
     let day_end = moment(day).endOf("day");
 
-    return frappe.resource("Timesheet")
-      .read({
-        fields: TimesheetFields,
-        filters: [
-          ["start_date", ">=", day_start.format(dateFormat)],
-          ["end_date", "<=", day_end.format(dateFormat)]
-        ],
-        order_by: "start_date DESC",
-        limit_page_length: 1
+    return frappe.api("bloomstack_timer.api.listDayTimeline")
+      .get({
+        start_date: day_start.format(dateTimeFormat),
+        end_date: day_end.format(dateTimeFormat),
+        now: moment().format(dateTimeFormat)
       })
-      .then((results) => {
-        if ( results.length > 0 ) {
-          return querySheetDetails(results[0]);
-        }
-        return null;
-      })
-      .then((result : QuerySheetDetailsResult) => {
-        if ( result ) {
-          return result.details.reduce((c, d) => {
-            let task : DataTypes.Task | void = tasks.find(t => t.id === d.task);
-            if ( task ) {
-              let item : DataTypes.TimelineItem = {
-                id: d.name,
-                start: moment(d.from_time, dateTimeFormat),
-                end: d.to_time?moment(d.to_time, dateTimeFormat):moment(),
-                task,
-                is_running: d.to_time?false:true,
-                canDrag: d.to_time?true:false,
-                canResize: d.to_time?true:false
-              }
+      .then(results => {
+        return results.message.reduce((c, d) => {
+          let parser = new DOMParser().parseFromString((d.task_description || ""), "text/html");
+          let item : DataTypes.TimelineItem = {
+            id: d.id,
+            start: moment(d.start, dateTimeFormat),
+            end: d.end?moment(d.end, dateTimeFormat):moment(),
+            task_id: d.task_id,
+            task_label: d.task_label,
+            task_description: parser.body?parser.body.textContent || "":"",
+            is_running: d.is_running?true:false,
+            canDrag: (d.is_running || d.is_locked)?false:true,
+            canResize: (d.is_running || d.is_locked)?false:true,
+            color: d.is_locked?"hsl(197, 5%, 71%)":null
+          }
 
-              c.push(item);
-            }
-            return c;
-          }, []);
-        }
-
-        return [];
+          c.push(item);
+          return c;
+        }, []);
       });
   },
 
@@ -692,6 +625,7 @@ const API : DataTypes.ConnectorAPI = {
   },
 
   listActivities() : Promise<DataTypes.Activity[]> {
+
     return frappe.resource("Activity Type")
       .read({
         fields: ActivityTypeFields
@@ -709,53 +643,27 @@ const API : DataTypes.ConnectorAPI = {
   listTasks(employee_name : string) : Promise<DataTypes.Task[]> {
     // first go through open timesheets and details
 
-    return frappe.resource('Task').read({
-      fields: TaskFields,
-      filters: [
-        ["status", "!=", "Closed"],
-        ["project", "!=", ""],
-        ["is_group", "=", 0]
-      ]
-    })
-    .then((tasks : Task[]) => {
-      // check all open timesheets and details to see total time spent on this task
-      // if it was started on another time.
-      return Promise.all(tasks.map((task : Task) => sumTaskHoursAndCheckOpen(task)));
-    })
-    .then((results : SumTaskHoursResult[]) => {
-      return results.map(result => {
-        // map from erpnext tasks to app tasks
-        let task : DataTypes.Task = {
-          id: result.task.name,
-          weight: result.task.task_weight,
-          total_hours: result.hours,
-          label: result.task.subject,
-          description: result.task.description || "",
-          last_open_timestamp: result.last_open_timestamp,
-          is_running: result.is_running || false,
-          project: result.task.project,
-          project_id: result.task.project,
-          parent: result.task.parent_task,
-          parent_label : null,
-          tags: (result.task._user_tags || "").split(',').reduce((c,t) => {
-            if ( t ) c.push(t);
-            return c;
-          }, [])
-        }
-
-        return task;
+    return frappe.api("bloomstack_timer.api.listTasks")
+      .get()
+      .then((results) => {
+        return results.message.map(result => {
+          let parser = new DOMParser().parseFromString((result.description || ""), "text/html");
+          return Object.assign({}, result, {
+            description: parser.body?parser.body.textContent || "":"",
+            is_running: result.is_running?true:false, // I want booleans
+            tags: result.tags.split(',').reduce((c,t) => {
+              if ( t ) c.push(t);
+              return c;
+            }, [])
+          })
+        })
+      })
+      .then((results : DataTypes.Task[]) => {
+        // order tasks by weight
+        return results.sort((a : DataTypes.Task, b : DataTypes.Task) => {
+          return a.weight - b.weight;
+        });
       });
-    })
-    .then((results : DataTypes.Task[]) => {
-      // get parent labels
-      return Promise.all(results.map((t : DataTypes.Task) => resolveTaskParent(t)));
-    })
-    .then((results : DataTypes.Task[]) => {
-      // order tasks by weight
-      return results.sort((a : DataTypes.Task, b : DataTypes.Task) => {
-        return a.weight - b.weight;
-      });
-    });
   },
 
   startTask(

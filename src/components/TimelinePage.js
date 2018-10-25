@@ -17,14 +17,14 @@ import type Moment from "moment";
 import type { TimelineCompProps, TimelineCompState } from "./TimelinePage.flow";
 
 const TimeBlockContentRenderer = (item : DataTypes.TimelineItem) => {
-  const { start, end, task } = item;
+  const { start, end, task_id, task_label, task_description } = item;
   return <React.Fragment>
     <div className="top-bar">
       <div className="start">{start.format('h:mm a')}</div>
-      <div className="title">{task.label}</div>
-      <div className="end"><Timer key={`timer-${task.id}`} time={end} started={item.is_running || false} /></div>
+      <div className="title">{task_label}</div>
+      <div className="end"><Timer key={`timer-${task_id}`} time={end} started={item.is_running || false} /></div>
     </div>
-    <div className="content">{task.description}</div>
+    <div className="content">{task_description}</div>
   </React.Fragment>
 }
 

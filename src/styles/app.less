@@ -156,8 +156,14 @@ html, body, #root {
                     background-color: white;
                     border-radius: 4px;
 
+                    &.draggable:hover {
+                        border-color: rgb(32, 107, 156);
+                        border-width: 2px;
+                    }
+
                     &:not(.draggable) {
                         background-color: #ace2ef;
+                        cursor: default;
                     }
 
                     .top-bar {

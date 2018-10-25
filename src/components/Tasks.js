@@ -151,25 +151,28 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
     }
     
     let total_time = moment.duration(total_ms, "ms").format()
+    let description = (task.description || "");
 
     return <Card elevation={1} interactive className="task-list-item">
       <div className="related">
-        <div className="project-name">{ task.project && ( <Button minimal small icon="git-branch" text={task.project} /> )}</div>
+        <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={task.project_label} /> )}</div>
         <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={task.parent_label} /> )}</div>
       </div>
       <div className="task-content">
         <div className="task-info">
           <div className="subject">{task.label}</div>
-          <div className="description">{(task.description || "").substring(0, 140)}</div>
+          <div className="description">{description.substring(0, 140)}</div>
           <div className="elapsed-time">Running Time: <span className="measure">{total_time}</span></div>
         </div>
         <div className="actions">
+
           { this.state.waiting && (
             <Spinner size="30" />
           ) }
 
           { !this.state.waiting && (
             <React.Fragment>
+
               { task.is_running && (
                 <Button icon="stop" minimal large onClick={onStopClick} />
               ) }
@@ -188,6 +191,7 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
                   <Button icon="play" minimal large />
                 </Select>
               ) }
+
             </React.Fragment>
           ) }
 

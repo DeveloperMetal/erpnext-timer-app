@@ -58,9 +58,9 @@ export type Task = {
   total_hours : number,
   is_running : boolean,
   last_open_timestamp : Moment | null,
-  project : string,
+  project_label : string,
   project_id : string,
-  parent : string | null,
+  parent_id : string | null,
   parent_label: string | null,
   tags : Array<string>
 }
@@ -69,11 +69,13 @@ export type TimelineItem = {
   id: string,
   start: Moment,
   end: Moment,
-  task: Task,
-  color?: string,
+  color?: string | null,
+  task_label: string,
+  task_description: string,
+  task_id: string,
   is_running?: boolean,
   canResize?: boolean,
-  canDrag?: boolean
+  canDrag?: boolean,
 }
 
 export type Activity = {
@@ -92,7 +94,7 @@ export type TimeLog = {
 export type ConnectorAPI = {
   login(auth : Auth) : Promise<any>,
   listActivities() : Promise<Activity[]>,
-  listDayTimeline(day: Moment, tasks : Task[]) : Promise<TimelineItem[]>,
+  listDayTimeline(day: Moment) : Promise<TimelineItem[]>,
   updateTimelineItem(item : TimelineItem) : Promise<TimelineItem>,
   listProjects() : Promise<Project[]>,
   listTasks(employee_name : string) : Promise<Task[]>,

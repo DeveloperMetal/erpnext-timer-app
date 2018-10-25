@@ -22,7 +22,7 @@ export class ConnectorError extends Error {
   message: string;
   original: ?Error;
 
-  constructor(message : string, info? : DataTypes.ErrorInfo, error? : Error, timeout : number = 10000) {
+  constructor(message : string, info? : DataTypes.ErrorInfo | null, error? : Error | null, timeout : number = 10000) {
     super(message);
     this.info = info;
     this.icon = 'globe-network';
@@ -185,7 +185,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }
 
     return this.connector
-      .listDayTimeline(date, this.state.tasks)
+      .listDayTimeline(date)
       .then((results : DataTypes.TimelineItem[]) => {
         this.setState({
           timeline: results,
