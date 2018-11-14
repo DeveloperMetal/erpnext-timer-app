@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/electron';
 
 Sentry.init({dsn: 'https://5af676ee91b945a5aed4e106e339a204@sentry.io/1301366', environment: DEV?"development":"production"});
 
-import { app, BrowserWindow, screen, Menu, Tray, ipcMain } from 'electron';
+import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain } from 'electron';
 import template from './menu-template.js';
 import windowStateKeeper from 'electron-window-state';
 import { autoUpdater } from 'electron-updater';
@@ -31,7 +31,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
 
     let mainWindowState = windowStateKeeper({
       defaultWidth: 400,
-      defaultHeight: 600,
+      defaultHeight: 500,
       defaultX: width - 400,
       defaultY: 0
     })
@@ -49,10 +49,11 @@ installExtension(REACT_DEVELOPER_TOOLS)
         preload: path.join(__dirname, 'sentry.js')
       },
       show: false,
-    })
+      alwaysOnTop: true
+    });
 
-    mainWindowState.manage(mainWindow)
-    mainWindow.loadURL(windowUrl)
+    mainWindowState.manage(mainWindow);
+    mainWindow.loadURL(windowUrl);
 
     let tray = new Tray(path.join(__dirname, '/tray.png'));
     var trayMenu = Menu.buildFromTemplate([
@@ -101,7 +102,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
 
     mainWindow.webContents.once('dom-ready', () => {
       if (DEV) {
-        mainWindow.webContents.openDevTools()
+        //mainWindow.webContents.openDevTools()
       } else {
         mainWindow.webContents.send("message", "Begin App...");
         autoUpdater.checkForUpdatesAndNotify();
@@ -127,7 +128,14 @@ installExtension(REACT_DEVELOPER_TOOLS)
       tray.setHighlightMode('never');
     })
 
-    mainWindow.once('ready-to-show', mainWindow.show)
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.show();
+
+      const ret = globalShortcut.register('CommandOrControl+Alt+T', () => {
+        mainWindow.isVisible()?mainWindow.hide():mainWindow.show();
+      });
+    
+    })
 
     mainWindow.on('minimize', (event) => {
       event.preventDefault();
@@ -198,6 +206,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
   .catch(err => console.log('An error occurred: ', err))
 
 app.on('window-all-closed', () => {
+  globalShortcut.unregisterAll();
   if (process.platform !== 'darwin') {
     app.quit()
   }

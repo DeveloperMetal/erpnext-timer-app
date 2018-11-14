@@ -107,19 +107,7 @@ const template = [
         role: 'front',
       },
     ],
-  },
-  {
-    label: 'Help',
-    role: 'help',
-    submenu: [
-      {
-        label: 'Learn More',
-        click() {
-          shell.openExternal('http://electron.atom.io')
-        },
-      },
-    ],
-  },
+  }
 ]
 
 export default template
