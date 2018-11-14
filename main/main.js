@@ -25,10 +25,8 @@ installExtension(REACT_DEVELOPER_TOOLS)
   .then(name => {
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    //Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
-    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-
-    //let tray = new Tray();
+    Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
+    //Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
     let mainWindowState = windowStateKeeper({
       defaultWidth: 400,
@@ -55,6 +53,51 @@ installExtension(REACT_DEVELOPER_TOOLS)
     mainWindowState.manage(mainWindow)
     mainWindow.loadURL(windowUrl)
 
+    let tray = new Tray(path.join(__dirname, '/tray.png'));
+    var trayMenu = Menu.buildFromTemplate([
+      {
+        label: "Show App",
+        click: function() {
+          mainWindow.show();
+        }
+      },
+      {
+        label: 'Debug',
+        submenu: [
+          {
+            label: 'Reload',
+            accelerator: 'CmdOrCtrl+R',
+            click(item) {
+              if (mainWindow) {
+                mainWindow.reload()
+              }
+            },
+          },
+          {
+            label: 'Toggle Developer Tools',
+            accelerator: 'Alt+Command+I',
+            click(item) {
+              if (mainWindow) {
+                mainWindow.toggleDevTools()
+              }
+            },
+          },
+        ],
+      },
+      {
+        type: 'separator',
+      },
+      {
+        label: "Quit",
+        click: function() {
+          app.isQuiting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    tray.setContextMenu(trayMenu);
+
     mainWindow.webContents.once('dom-ready', () => {
       if (DEV) {
         mainWindow.webContents.openDevTools()
@@ -65,26 +108,54 @@ installExtension(REACT_DEVELOPER_TOOLS)
     
     })
 
+    tray.on('click', () => {
+      mainWindow.isVisible()?mainWindow.hide():mainWindow.show();
+    })
+
     mainWindow.on('closed', () => {
       mainWindow = null
     })
 
+    mainWindow.on('show', () => {
+      tray.setHighlightMode('always');
+    })
+
+    mainWindow.on('hide', () => {
+      tray.setHighlightMode('never');
+    })
+
     mainWindow.once('ready-to-show', mainWindow.show)
+
+    mainWindow.on('minimize', (event) => {
+      event.preventDefault();
+      mainWindow.hide();
+    });
+
+
+    mainWindow.on('close', (event) => {
+      if ( !app.isQuiting ) {
+        event.preventDefault();
+        mainWindow.hide();
+      }
+    });
 
     autoUpdater.on('checking-for-update', () => {
       Sentry.captureMessage("Checking for updates...");
-   })
+    });
+
     autoUpdater.on('update-available', (info) => {
       Sentry.captureMessage("Update available...");
       mainWindow.webContents.send("update-available");
-    })
+    });
+
     autoUpdater.on('update-not-available', (info) => {
       Sentry.captureMessage("Update not available...");
-    })
+    });
+
     autoUpdater.on('error', (err) => {
       Sentry.captureMessage("Error auto updating... ");
       Sentry.captureError(err);
-    })
+    });
 
     autoUpdater.on('download-progress', (progressObj) => {
       let log_message = "Download speed: " + progressObj.bytesPerSecond;
@@ -92,7 +163,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
       log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
       mainWindow.webContents.send("message", log_message);
       mainWindow.webContents.send("update-download-progress", progressObj);
-    })
+    });
 
     autoUpdater.on('update-downloaded', (info) => {
       mainWindow.webContents.send("message", "Update downloaded");
@@ -102,7 +173,7 @@ installExtension(REACT_DEVELOPER_TOOLS)
 
     ipcMain.on('getIdleTime', (event, arg) => {
       event.sender.send('setIdleTime', desktopIdle.getIdleTime())
-    })
+    });
 
     ipcMain.on('getSetting', (event, key, defaultValue) => {
       let result = settings.get(key, defaultValue);

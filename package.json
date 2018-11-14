@@ -15,6 +15,7 @@
     "server": "node dev-server.js --run-electron",
     "test": "nwb test",
     "test:watch": "nwb test --server",
+    "build:icons": "node build_icons.js",
     "build": "nwb clean && nwb build && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -38,8 +39,7 @@
     },
     "dmg": {},
     "win": {
-      "target": "NSIS",
-      "icon": "app.ico"
+      "target": "NSIS"
     }
   },
   "dependencies": {
@@ -93,6 +93,8 @@
     "minimist": "^1.2.0",
     "nwb": "0.21.x",
     "nwb-less": "^0.7.1",
+    "png2icons": "^1.0.1",
+    "sharp": "^0.21.0",
     "watch": "^1.0.2"
   },
   "author": "",

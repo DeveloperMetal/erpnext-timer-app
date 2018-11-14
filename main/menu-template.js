@@ -86,38 +86,6 @@ const template = [
     ],
   },
   {
-    label: 'View',
-    submenu: [
-      {
-        label: 'Reload',
-        accelerator: 'CmdOrCtrl+R',
-        click(item, focusedWindow) {
-          if (focusedWindow) {
-            focusedWindow.reload()
-          }
-        },
-      },
-      {
-        label: 'Toggle Full Screen',
-        accelerator: 'Ctrl+Command+F',
-        click(item, focusedWindow) {
-          if (focusedWindow) {
-            focusedWindow.setFullScreen(!focusedWindow.isFullScreen())
-          }
-        },
-      },
-      {
-        label: 'Toggle Developer Tools',
-        accelerator: 'Alt+Command+I',
-        click(item, focusedWindow) {
-          if (focusedWindow) {
-            focusedWindow.toggleDevTools()
-          }
-        },
-      },
-    ],
-  },
-  {
     label: 'Window',
     role: 'window',
     submenu: [
