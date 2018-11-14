@@ -13,6 +13,7 @@ import settings from 'electron-settings';
 import desktopIdle from 'desktop-idle';
 import path from 'path';
 import log from 'electron-log';
+import { buildEditContext } from './contextEditMenu.js';
 
 const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()}/dist/index.html`
 
@@ -105,8 +106,10 @@ installExtension(REACT_DEVELOPER_TOOLS)
         mainWindow.webContents.send("message", "Begin App...");
         autoUpdater.checkForUpdatesAndNotify();
       }
-    
-    })
+
+    });
+
+    buildEditContext(mainWindow);
 
     tray.on('click', () => {
       mainWindow.isVisible()?mainWindow.hide():mainWindow.show();
