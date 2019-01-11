@@ -1,8 +1,8 @@
 {
-  "name": "erpnext-timer-app",
-  "productName": "ErpNext Timer",
-  "version": "1.0.14",
-  "description": "An app to track work hours on erpnext.",
+  "name": "bloomstack-timer-app",
+  "productName": "Bloomstack Timer",
+  "version": "1.0.15",
+  "description": "An app to track work hours on erpnext based servers",
   "main": "main/index.js",
   "private": false,
   "scripts": {

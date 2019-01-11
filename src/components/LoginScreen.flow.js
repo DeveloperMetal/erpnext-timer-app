@@ -9,5 +9,6 @@ export type Props = {
 }
 export type State = {
   auth : DataTypes.Auth,
-  autoLogin : boolean
+  autoLogin : boolean,
+  rememberLogin: boolean
 }

@@ -22,6 +22,8 @@ import * as AppTypes from "./App.flow";
 
 export class App extends React.Component<AppTypes.Props, AppTypes.State> {
 
+  backend : any;
+
   constructor(props : AppTypes.Props) {
     super(props);
 
@@ -43,17 +45,43 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
       })
     });
 
+    ipcRenderer.on("user-logout", (e) => {
+      if ( this.backend ) {
+        this.backend.actions.logout();
+        ipcRenderer.sendSync('setSetting', 'autoLogin', false);
+        this.setState({
+          displayApp: false
+        });
+        ipcRenderer.send("user-logout");
+      }
+    });
+
   }
 
   installUpdate() {
     ipcRenderer.send("update-install");
   }
-  
 
-  onLoggedIn(auth : DataTypes.Auth) {
+  onLoggedIn(auth : DataTypes.Auth, options? : DataTypes.LoginOptions) {
+    if ( options ) {
+      if ( options.rememberLogin ) {
+        ipcRenderer.sendSync('saveCredentials', auth.usr, auth.pwd);
+        ipcRenderer.sendSync('setSetting', 'autoLogin', options.autoLogin);
+        ipcRenderer.sendSync('setSetting', 'usr', auth.usr);
+      } else {
+        ipcRenderer.sendSync('removeCredentials', auth.usr);
+        ipcRenderer.sendSync('setSetting', 'autoLogin', false);
+        ipcRenderer.sendSync('setSetting', 'usr', '');
+      }
+      ipcRenderer.sendSync('setSetting', 'rememberLogin', options.rememberLogin);
+      ipcRenderer.sendSync('setSetting', 'host', auth.host);
+    }
+
     this.setState({
       displayApp: true
     });
+
+    ipcRenderer.send("user-login");
   }
 
   renderUpdaterProgress() {
@@ -71,9 +99,19 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
   }
 
   render() {
-    const onLoggedIn : Types.CallbackOnLoggedIn = (auth : DataTypes.Auth) => this.onLoggedIn(auth)
+    const onLoggedIn : Types.CallbackOnLoggedIn = 
+      (auth : DataTypes.Auth, options? : DataTypes.LoginOptions) => {
+        return this.onLoggedIn(auth, options);
+      }
 
     return <BackendProvider>
+      <BackendConsumer>
+        { (backend) => {
+          this.backend = backend;
+          return [];
+        }}
+      </BackendConsumer>
+
       { /* We separate the display app function from login conditions to keep logic tree light */ }
       { this.state.displayApp && (
           <AppWithNavigation />

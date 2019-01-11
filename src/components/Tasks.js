@@ -1,9 +1,12 @@
 // @flow
 
+import { ipcRenderer } from 'electron';
+
 // Third party
 import React from "react";
 import { Card, Button, Tag, MenuItem, Spinner } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
+import  classNames from 'classnames';
 import moment from "moment";
 import momentDurationFormatSetup from "moment-duration-format";
 momentDurationFormatSetup(moment);
@@ -71,6 +74,8 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
     this.setState({
       from_time: moment(this.props.task.last_open_timestamp)
     })
+
+    ipcRenderer.send('timer-started');
 
     this.setupTimer();
   }
@@ -153,7 +158,12 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
     let total_time = moment.duration(total_ms, "ms").format()
     let description = (task.description || "");
 
-    return <Card elevation={1} interactive className="task-list-item">
+    return <Card 
+        elevation={1} 
+        interactive 
+        className={ classNames("task-list-item", { 
+          is_running: task.is_running 
+        }) } >
       <div className="related">
         <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={task.project_label} /> )}</div>
         <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={task.parent_label} /> )}</div>
@@ -242,12 +252,14 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       return this.onStopTask(task);
     }
 
+    console.log("List tasks: ", this.props.backend.tasks);
+
     return <div className="page">
       <div className="page-title">Tasks</div>
       <div className="page-content">
         <div className="task-list">
-          { this.props.backend.tasks.map(t => <TaskListItem 
-              key={t.id} 
+          { this.props.backend.tasks.map((t, k) => <TaskListItem 
+              key={`task-${k}`} 
               task={t}
               activities={this.props.backend.activities || []}
               onStartTask={onStartTask}

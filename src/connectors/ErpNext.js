@@ -124,10 +124,10 @@ function queryStringBuilder(args : any, encodeValues : any = false) : string {
 function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
   console.log("on parseFrappeErrorResponse");
   console.dir(err);
+
   if (!err.response || typeof err.response.data === undefined) {
     return null;
   }
-
 
   let message = null,
     server_messages = [],
@@ -218,29 +218,29 @@ class FrappeApi {
   handleException(err : any) : void {
     let errorInfo = parseFrappeErrorResponse(err);
     if (errorInfo) {
-        throw new ConnectorError(errorInfo.message || err.toString(), errorInfo);
+      throw new ConnectorError(errorInfo.message || err.toString(), errorInfo);
     } else {
       throw new ConnectorError(err.toString(), err);
     }
   }
 
-  get(args : any) : Promise<any> {
+  get(args : any, config: any) : Promise<any> {
     let params : string = queryStringBuilder(args);
     if (params) {
       params = `?${params}`;
     }
 
-    return axios.get(`${this.host}/api/method/${this.method}${params}`)
+    return axios.get(`${this.host}/api/method/${this.method}${params}`, config)
       .then(response => {
         return response.data;
       })
       .catch(err => this.handleException(err));
   }
 
-  post(args : any) : Promise<any> {
+  post(args : any, config: any) : Promise<any> {
     let params : string = queryStringBuilder(args)
 
-    return axios.post(`${this.host}/api/method/${this.method}`, params)
+    return axios.post(`${this.host}/api/method/${this.method}`, params, config)
       .then(response => {
         return response.data;
       })
@@ -536,6 +536,8 @@ const API : DataTypes.ConnectorAPI = {
     return frappe.api('login').post({
       usr: auth.usr,
       pwd: auth.pwd
+    }, {
+      withCredentials: true
     })
     .then(() => {
       return findEmployeeByUserId(auth.usr);
@@ -557,7 +559,7 @@ const API : DataTypes.ConnectorAPI = {
     let day_start = moment(day).startOf("day");
     let day_end = moment(day).endOf("day");
 
-    return frappe.api("bloomstack_timer.api.listDayTimeline")
+    return frappe.api("bloomstack_timer.api.list_day_timeline")
       .get({
         start_date: day_start.format(dateTimeFormat),
         end_date: day_end.format(dateTimeFormat),
@@ -643,7 +645,7 @@ const API : DataTypes.ConnectorAPI = {
   listTasks(employee_name : string) : Promise<DataTypes.Task[]> {
     // first go through open timesheets and details
 
-    return frappe.api("bloomstack_timer.api.listTasks")
+    return frappe.api("bloomstack_timer.api.list_tasks")
       .get()
       .then((results) => {
         return results.message.map(result => {

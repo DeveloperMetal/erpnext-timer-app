@@ -1,6 +1,7 @@
 // @flow
 
 import { trackError, trackUser, trackExtra } from "../tracking";
+import { ipcRenderer } from 'electron';
 
 // Flow types
 import * as DataTypes from "./Data.flow";
@@ -86,6 +87,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         ...bindCallbacks(this, [
           "throwError",
           "login",
+          "logout",
           "listTasks",
           "startTask",
           "stopTask",
@@ -129,6 +131,18 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         done(err);
       }
     });
+  }
+
+  logout() {
+    this.setState({
+      attemptingLogin: false,
+      loggedIn: false,
+      auth: {
+        usr: "",
+        pwd: "",
+        host: ""
+      }
+    })
   }
 
   login(auth : DataTypes.Auth, done : DataTypes.ResultCallback) {
@@ -250,6 +264,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       let projects = results[0];
       let activities = results[1];
       let tasks = results[2];
+      tasks.sort((a, b) => (a.is_running?1:0) < (b.is_running?1:0)? 1:0);
       this.setState({
         projects,
         activities,
@@ -265,6 +280,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .startTask(task, activity, timestamp, this.state.user.employee_name)
       .then(() => {
+        ipcRenderer.send('timer-started');
         this.listTasks();
       })
       .catch(err => {
@@ -277,6 +293,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .stopTask(task, timestamp, this.state.user.employee_name)
       .then(() => {
+        ipcRenderer.send('timer-stopped');
         return this.listTasks();
       })
       .catch(err => {

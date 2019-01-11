@@ -8,6 +8,11 @@ export type Auth = {
   host : string
 }
 
+export type LoginOptions = {
+  rememberLogin: boolean,
+  autoLogin: boolean
+}
+
 export type ErrorInfo = {
   status : number,
   statusText : string,

@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/electron';
 Sentry.init({dsn: 'https://5af676ee91b945a5aed4e106e339a204@sentry.io/1301366', environment: DEV?"development":"production"});
 
 import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain } from 'electron';
-import template from './menu-template.js';
+import template from './menu-template';
 import windowStateKeeper from 'electron-window-state';
 import { autoUpdater } from 'electron-updater';
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
@@ -13,8 +13,13 @@ import settings from 'electron-settings';
 import desktopIdle from 'desktop-idle';
 import path from 'path';
 import log from 'electron-log';
-import { buildEditContext } from './contextEditMenu.js';
+import { buildEditContext } from './contextEditMenu';
+import keytar from 'keytar';
+import { buildTrayMenu } from './trayMenu';
+import { TrayState, TrayAnimation } from './trayAnimations';
 
+const KEYTAR_SERVICE = 'com.bloomstack.timerapp';
+const SHOW_TRAY_DEBUGGER = true;
 const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()}/dist/index.html`
 
 let mainWindow
@@ -26,8 +31,12 @@ installExtension(REACT_DEVELOPER_TOOLS)
   .then(name => {
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
-    //Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+    if (process.platform === 'darwin') {
+      Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+    } else {
+      Menu.setApplicationMenu(DEV?Menu.buildFromTemplate(template):null);
+    }
+    
 
     let mainWindowState = windowStateKeeper({
       defaultWidth: 400,
@@ -43,73 +52,45 @@ installExtension(REACT_DEVELOPER_TOOLS)
       y: mainWindowState.y,
       minWidth: 400,
       minHeight: 200,
-      //titleBarStyle: 'hiddenInset',
       webPreferences: {
         webSecurity: false,
         preload: path.join(__dirname, 'sentry.js')
       },
       show: false,
+      autoHideMenuBar : true,
+      titleBarStyle: 'hidden',
       alwaysOnTop: true
     });
 
     mainWindowState.manage(mainWindow);
-    mainWindow.loadURL(windowUrl);
 
-    let tray = new Tray(path.join(__dirname, '/tray.png'));
-    var trayMenu = Menu.buildFromTemplate([
-      {
-        label: "Show App",
-        click: function() {
-          mainWindow.show();
-        }
-      },
-      {
-        label: 'Debug',
-        submenu: [
-          {
-            label: 'Reload',
-            accelerator: 'CmdOrCtrl+R',
-            click(item) {
-              if (mainWindow) {
-                mainWindow.reload()
-              }
-            },
-          },
-          {
-            label: 'Toggle Developer Tools',
-            accelerator: 'Alt+Command+I',
-            click(item) {
-              if (mainWindow) {
-                mainWindow.toggleDevTools()
-              }
-            },
-          },
-        ],
-      },
-      {
-        type: 'separator',
-      },
-      {
-        label: "Quit",
-        click: function() {
-          app.isQuiting = true;
-          app.quit();
-        }
-      }
-    ]);
+    let tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
 
-    tray.setContextMenu(trayMenu);
+    let trayState = new TrayState(tray, mainWindow);
+    let animationDelay = 150;
+    let animationFrames = [];
+    for(let i=1; i <= 8; i++) {
+      animationFrames.push({ 
+        path: path.join(__dirname, 'assets', `tray-frame-${i}.png`), 
+        delay: animationDelay });
+    }
+    trayState.addIdleImage(path.join(__dirname, 'assets', 'tray.png'));
+    trayState.addRunningAnimation(new TrayAnimation(animationFrames));
+    trayState.setIdle(); // start with stopped timer icon
+
+    mainWindow.webContents.on("did-fail-load", (e) => {
+      console.error("Error loading app: ", e);
+    });
 
     mainWindow.webContents.once('dom-ready', () => {
-      if (DEV) {
-        //mainWindow.webContents.openDevTools()
-      } else {
+      if (!DEV) {
         mainWindow.webContents.send("message", "Begin App...");
         autoUpdater.checkForUpdatesAndNotify();
       }
 
     });
 
+    buildTrayMenu(app, mainWindow, tray, false, SHOW_TRAY_DEBUGGER);
     buildEditContext(mainWindow);
 
     tray.on('click', () => {
@@ -129,10 +110,18 @@ installExtension(REACT_DEVELOPER_TOOLS)
     })
 
     mainWindow.once('ready-to-show', () => {
+      positionWindow(mainWindow, tray);
       mainWindow.show();
 
       const ret = globalShortcut.register('CommandOrControl+Alt+T', () => {
-        mainWindow.isVisible()?mainWindow.hide():mainWindow.show();
+        let visible = mainWindow.isVisible();
+
+        if ( !visible ) {
+          positionWindow(mainWindow, tray);
+        }
+
+        visible?mainWindow.hide():mainWindow.show();
+
       });
     
     })
@@ -201,6 +190,94 @@ installExtension(REACT_DEVELOPER_TOOLS)
       event.returnValue = true;
     });
 
+    ipcMain.on('getCredentials', (event, usr) => {
+      if ( usr ) {
+        keytar.getPassword(KEYTAR_SERVICE, usr).then(result => {
+          event.returnValue = result;
+        })
+        .catch((err) => {
+          console.error(err);
+          event.returnValue = '';
+        })
+      } else {
+        event.returnValue = '';
+      }
+    })
+
+    ipcMain.on('saveCredentials', (event, account, password) => {
+      keytar.setPassword(KEYTAR_SERVICE, account, password);
+      event.returnValue = true;
+    });
+
+    ipcMain.on('removeCredentials', (event, account) => {
+      keytar.deletePassword(KEYTAR_SERVICE, account);
+      event.returnValue = true;
+    });
+
+    function getLoginInfo() {
+      let rememberLogin = settings.get('rememberLogin', false);
+      let autoLogin = settings.get('autoLogin', false);
+      let host = settings.get('host', '');
+      let usr = '', pwd = '';
+      if ( rememberLogin ) {
+        usr = settings.get('usr', '');
+      }
+      
+      return Promise.resolve({
+        auth: {
+          host, usr, pwd
+        },
+        options: {
+          rememberLogin,
+          autoLogin
+        }
+      })
+    }
+
+    ipcMain.on('api:getLoginInfo', (event, request) => {
+
+      getLoginInfo()
+        .then((result => {
+          if ( result.options.rememberLogin && result.auth.usr ) {
+            return keytar.getPassword(KEYTAR_SERVICE, result.auth.usr).then(pwd => {
+              result.auth.pwd = pwd;
+              return result;
+            })
+            .catch((err) => {
+              console.error(err);
+              return result;
+            });
+          }
+
+          return result;
+        }))
+        .then((response) => {
+          return event.sender.send(request.response_channel, response);
+        })
+        .catch((error) => {
+          console.error(error);
+          event.sender.send(request.error_channel, error);
+        })
+
+    });
+
+    ipcMain.on('user-login', (event) => {
+      buildTrayMenu(app, mainWindow, tray, true, SHOW_TRAY_DEBUGGER);
+    });
+
+    ipcMain.on('user-logout', (event) => {
+      buildTrayMenu(app, mainWindow, tray, false, SHOW_TRAY_DEBUGGER);
+    })
+
+    ipcMain.on('timer-started', (event) => {
+      trayState.setTimerRunning();
+    })
+
+    ipcMain.on('timer-stopped', (event) => {
+      trayState.setIdle();
+    })
+
+    mainWindow.loadURL(windowUrl);
 
   })
   .catch(err => console.log('An error occurred: ', err))
@@ -217,5 +294,16 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+function positionWindow(win, tray) {
+  let mousePos = screen.getCursorScreenPoint();
+  let display = screen.getDisplayNearestPoint(mousePos);
+
+  const { x, y, width, height } = display.workArea;
+  const [ winWidth, winHeight ] = win.getSize();
+
+  win.setPosition(x + (width - winWidth), y);
+  win.setSize(winWidth, height - tray.getBounds().height);
+}
 
 process.on('uncaughtException', console.log)

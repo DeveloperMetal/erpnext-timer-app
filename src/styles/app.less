@@ -108,7 +108,7 @@ html, body, #root {
             }
 
             .page-content {
-                padding-top: 1em;
+                padding: 1em 5px 0 5px;
                 z-index: 1;
                 overflow-y: auto;
                 flex: 1 1 auto;
@@ -119,6 +119,7 @@ html, body, #root {
                 display: flex;
                 flex-direction: row;
                 justify-content: space-evenly;
+                padding-bottom: 5px;
             }
             
             > h1 {
@@ -214,6 +215,14 @@ html, body, #root {
         flex-direction: column;
         font-size: 1em;
         margin: 1em 0;
+
+        &.is_running {
+            background-color: rgb(206, 240, 206);
+
+            .task-content .elapsed-time {
+                font-weight: bolder;
+            }
+        }
 
         .related {
             display: flex;

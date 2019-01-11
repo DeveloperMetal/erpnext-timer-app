@@ -1,6 +1,7 @@
 // @flow
 
 import { ipcRenderer, remote } from "electron";
+import { mainProcessAPI } from "../utils";
 
 // Flow types
 import * as Types from "./Types.flow";
@@ -21,26 +22,41 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
   constructor(props : LoginTypes.Props) {
     super(props)
 
+    let rememberLogin = '';//ipcRenderer.sendSync('getSettings', 'rememberLogin', false);
+    let autoLogin = '';//ipcRenderer.sendSync('getSetting', 'autoLogin', false);
+    let host = '';//ipcRenderer.sendSync('getSetting', 'host', '');
+    let usr = '', pwd = '';
+    
     this.state = {
       auth: {
-        host: ipcRenderer.sendSync('getSetting', 'host'),
-        usr: ipcRenderer.sendSync('getSetting', 'usr'),
-        pwd: ipcRenderer.sendSync('getSetting', 'pwd'),
+        host,
+        usr,
+        pwd
       },
-      autoLogin: ipcRenderer.sendSync('getSetting', 'autoLogin', false),
+      rememberLogin,
+      autoLogin,
+      loadingSettings: true
     }
 
+    mainProcessAPI('getLoginInfo')
+      .then((result) => {
+        this.setState({
+          auth: result.auth,
+          ...result.options,
+          loadingSettings: false
+        });
+
+        if ( result.options.autoLogin ) {
+          this.autoLogin();
+        }    
+      });
   }
 
   autoLogin() {
     this.props.backend.actions.login(this.state.auth, (loggedIn, err) => {
       if ( loggedIn ) {
-        ipcRenderer.synd('setSetting', 'host', this.state.auth.host);
-        ipcRenderer.synd('setSetting', 'usr', this.state.auth.usr);
-        ipcRenderer.synd('setSetting', 'pwd', this.state.auth.pwd);
-        
         if ( typeof this.props.onLoggedIn === "function") {
-          this.props.onLoggedIn(this.state.auth);
+          this.props.onLoggedIn(this.state.auth, null);
         } else {
           console.error("Missing onLoggedIn callback in LoginScreen props");
         }
@@ -50,21 +66,17 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
     });
   }
 
-  componentDidMount() {
-    if ( this.state.autoLogin ) {
-      this.autoLogin();
-    }
-  }
-
   render() {
     const { backend, onLoggedIn } = this.props;
-    const onLoginAction = (auth : DataTypes.Auth) => backend.actions.login(auth, (loggedIn : boolean, err? : Error) => {
-      if ( loggedIn ) {
-        onLoggedIn(auth)
-      } else {
-        console.error(err);
-      }
-    });
+    const onLoginAction = (auth : DataTypes.Auth, options: DataTypes.LoginOptions) => {
+      backend.actions.login(auth, (loggedIn : boolean, err? : Error) => {
+        if ( loggedIn ) {
+          onLoggedIn(auth, options)
+        } else {
+          console.error(err);
+        }
+      });
+    }
 
     return <React.Fragment>
       <div id='app' className='bp3-dark'>
@@ -74,13 +86,18 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
             { /* BOF - Login form and spinner */}
 
             { /* Show spinner while attempting to login */ }
-            { backend.attemptingLogin && (
+            { (backend.attemptingLogin || this.state.loadingSettings) && (
               <Spinner size={Spinner.SIZE_LARGE} />
             )}
 
             { /* Otherwise, show the login widget */ }
-            { !backend.attemptingLogin && !backend.loggedIn && (
-              <Login {...this.state.auth} onLoginAction={onLoginAction} />
+            { !backend.attemptingLogin && !backend.loggedIn && !this.state.loadingSettings && (
+              <Login 
+                {...this.state.auth}
+                autoLogin={this.state.autoLogin} 
+                rememberLogin={this.state.rememberLogin} 
+                onLoginAction={onLoginAction} 
+              />
             )}
 
             { /* EOF - Login form and spinner */}

@@ -116,8 +116,8 @@ class AddTaskForm extends React.PureComponent<Props, State> {
       </div>
 
       <div className="page-actions">
-        <Button text="Save" intent={Intent.PRIMARY} onClick={onSave} />
-        <Button text="Cancel" onClick={() => this.props.nav("timesheet/tasks")}/>
+        <Button text="Save" large intent={Intent.PRIMARY} onClick={onSave} />
+        <Button text="Cancel" large onClick={() => this.props.nav("timesheet/tasks")}/>
       </div>
     </div>
   }

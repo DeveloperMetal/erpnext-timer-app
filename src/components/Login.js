@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, FormGroup, InputGroup, Intent, Tooltip } from "@blueprintjs/core";
+import { Button, FormGroup, InputGroup, Switch, Intent, Tooltip } from "@blueprintjs/core";
 
 export default class Login extends React.PureComponent {
   constructor(props) {
@@ -8,7 +8,9 @@ export default class Login extends React.PureComponent {
       showPassword: false,
       host: props.host,
       usr: props.usr,
-      pwd: props.pwd
+      pwd: props.pwd,
+      rememberLogin: props.rememberLogin,
+      autoLogin: props.autoLogin
     }
   }
 
@@ -19,6 +21,9 @@ export default class Login extends React.PureComponent {
         host: this.state.host,
         usr: this.state.usr,
         pwd: this.state.pwd
+      }, {
+        rememberLogin: this.state.rememberLogin,
+        autoLogin: (!this.state.rememberLogin)?false:this.state.autoLogin
       });
     }
   }
@@ -39,6 +44,14 @@ export default class Login extends React.PureComponent {
 
   handlePwdChange(e) {
     this.setState({ pwd: e.target.value });
+  }
+
+  handleRememberChange(e) {
+    this.setState({ rememberLogin: e.target.checked });
+  }
+
+  handleAutoChange(e) {
+    this.setState({ autoLogin: e.target.checked });
   }
 
   render() {
@@ -92,6 +105,19 @@ export default class Login extends React.PureComponent {
             onKeyPress={(e) => { if ( e.key === 'Enter' ) this.handleLoginClick(); } }
           />
         </FormGroup>
+        <div>
+          <Switch 
+            checked={ this.state.rememberLogin } 
+            label="Remember Login" 
+            onChange={this.handleRememberChange.bind(this)}
+          />
+          <Switch
+            disabled={ !this.state.rememberLogin }
+            checked={ this.state.rememberLogin?this.state.autoLogin:false } 
+            label="Auto Login" 
+            onChange={this.handleAutoChange.bind(this)}
+          />
+        </div>
         <Button fill={true} text="Login" onClick={ this.handleLoginClick.bind(this) } icon="key" />
       </div>
     );
