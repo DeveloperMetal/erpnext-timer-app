@@ -28,9 +28,9 @@ app.listen(port, 'localhost', function(err) {
   if (args['run-electron']) {
     console.log('starting electron', electron)
     const child = proc.spawn(electron, ['.', '--enable-logging'], {
-      env: {
+      env: Object.assign({
         DEV: true,
-      },
+      }, process.env),
       stdio: 'inherit',
     })
 
