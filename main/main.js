@@ -8,7 +8,6 @@ import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain } from 
 import template from './menu-template';
 import windowStateKeeper from 'electron-window-state';
 import { autoUpdater } from 'electron-updater';
-import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import settings from 'electron-settings';
 import desktopIdle from 'desktop-idle';
 import path from 'path';
@@ -27,8 +26,17 @@ let mainWindow
 autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
 
-installExtension(REACT_DEVELOPER_TOOLS)
-  .then(name => {
+let init = Promise.resolve();
+
+if ( DEV ) {
+  const {
+    default: installExtension,
+    REACT_DEVELOPER_TOOLS
+  } = require('electron-devtools-installer');
+  init = init.then(() => installExtension(REACT_DEVELOPER_TOOLS));
+}
+
+init.then(() => {
     let { width, height } = screen.getPrimaryDisplay().workAreaSize
 
     if (process.platform === 'darwin') {
