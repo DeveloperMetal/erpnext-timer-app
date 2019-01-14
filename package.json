@@ -40,6 +40,13 @@
     "dmg": {},
     "win": {
       "target": "NSIS"
+    },
+    "linux": {
+      "target": [
+        { 
+          "target": "deb"
+        }
+      ]
     }
   },
   "dependencies": {
@@ -97,7 +104,8 @@
     "sharp": "^0.21.0",
     "watch": "^1.0.2"
   },
-  "author": "",
+  "homepage": "https://digithinkit.com",
+  "author": "Felipe Orellana <forellana@digithinkit.com>",
   "license": "MIT",
   "repository": ""
 }
