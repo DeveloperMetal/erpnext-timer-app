@@ -16,6 +16,7 @@ import { buildEditContext } from './contextEditMenu';
 import keytar from 'keytar';
 import { buildTrayMenu } from './trayMenu';
 import { TrayState, TrayAnimation } from './trayAnimations';
+import changeLog from '../changelog.json';
 
 const KEYTAR_SERVICE = 'com.bloomstack.timerapp';
 const SHOW_TRAY_DEBUGGER = true;
@@ -126,10 +127,14 @@ init.then(() => {
 
         if ( !visible ) {
           positionWindow(mainWindow, tray);
+          mainWindow.show();
+        } else {
+          if ( isMouseOnAppDisplay(mainWindow) ) {
+            mainWindow.hide();
+          } else {
+            positionWindow(mainWindow, tray);
+          }
         }
-
-        visible?mainWindow.hide():mainWindow.show();
-
       });
     
     })
@@ -242,6 +247,25 @@ init.then(() => {
       })
     }
 
+    ipcMain.on('api:appStarted', (event, request) => {
+      console.log("on App Started");
+
+      let response = {
+        displayChangeLog: false,
+        changeLog
+      };
+
+      let lastChangeLog = settings.get('last-changelog-displayed');
+      if ( lastChangeLog != app.getVersion() ) {
+        //settings.set('last-changelog-displayed', app.getVersion());
+        response.displayChangeLog = true;
+      }
+
+      console.log(response);
+      event.sender.send(request.response_channel, response);
+
+    })
+
     ipcMain.on('api:getLoginInfo', (event, request) => {
 
       getLoginInfo()
@@ -312,6 +336,15 @@ function positionWindow(win, tray) {
 
   win.setPosition(x + (width - winWidth), y);
   win.setSize(winWidth, height - tray.getBounds().height);
+}
+
+function isMouseOnAppDisplay(win) {
+  let winPosition = win.getPosition();
+  let mousePos = screen.getCursorScreenPoint();
+  let appDisplay = screen.getDisplayNearestPoint({x: winPosition[0], y: winPosition[1]});
+  let mouseDisplay = screen.getDisplayNearestPoint(mousePos);
+ 
+  return appDisplay.id === mouseDisplay.id;
 }
 
 process.on('uncaughtException', console.log)

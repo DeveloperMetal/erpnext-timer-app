@@ -2,6 +2,7 @@
 
 import { ipcRenderer, remote } from "electron";
 import { mainProcessAPI } from "../utils";
+import classNames from "classnames";
 
 // Flow types
 import * as Types from "./Types.flow";
@@ -14,6 +15,7 @@ import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaste
 
 // Components
 import Login from "./Login";
+import ChangeLog from "./ChangeLog";
 
 const version = remote.app.getVersion();
 
@@ -35,18 +37,32 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
       },
       rememberLogin,
       autoLogin,
-      loadingSettings: true
+      loadingSettings: true,
+      displayChangeLog: false
     }
 
-    mainProcessAPI('getLoginInfo')
-      .then((result) => {
+  }
+
+  componentDidMount() {
+
+    mainProcessAPI('appStarted')
+      .then((response) => {
+        if ( response.displayChangeLog ) {
+          this.setState({
+            displayChangeLog: response.displayChangeLog,
+            changeLog: response.changeLog
+          })
+        }
+      })
+      .then(() => mainProcessAPI('getLoginInfo'))
+      .then((response) => {
         this.setState({
-          auth: result.auth,
-          ...result.options,
+          auth: response.auth,
+          ...response.options,
           loadingSettings: false
         });
 
-        if ( result.options.autoLogin ) {
+        if ( !this.state.displayChangeLog && response.options.autoLogin ) {
           this.autoLogin();
         }    
       });
@@ -69,6 +85,11 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
   render() {
     const { backend, onLoggedIn } = this.props;
     const onLoginAction = (auth : DataTypes.Auth, options: DataTypes.LoginOptions) => {
+      this.setState({
+        auth,
+        ...options
+      });
+
       backend.actions.login(auth, (loggedIn : boolean, err? : Error) => {
         if ( loggedIn ) {
           onLoggedIn(auth, options)
@@ -77,11 +98,20 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
         }
       });
     }
+    const onChangeLogClose = () => {
+      this.setState({
+        displayChangeLog: false
+      });
+
+      if ( this.state.autoLogin ) {
+        this.autoLogin();
+      }
+    }
 
     return <React.Fragment>
       <div id='app' className='bp3-dark'>
         <div id='content'>
-          <div className="dead-center">
+          <div className={ classNames({"flex-fill": this.state.displayChangeLog, "dead-center": !this.state.displayChangeLog}) }>
 
             { /* BOF - Login form and spinner */}
 
@@ -91,13 +121,20 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
             )}
 
             { /* Otherwise, show the login widget */ }
-            { !backend.attemptingLogin && !backend.loggedIn && !this.state.loadingSettings && (
+            { !this.state.displayChangeLog && !backend.attemptingLogin && !backend.loggedIn && !this.state.loadingSettings && (
               <Login 
                 {...this.state.auth}
                 autoLogin={this.state.autoLogin} 
                 rememberLogin={this.state.rememberLogin} 
                 onLoginAction={onLoginAction} 
               />
+            )}
+
+            {/* Display Changelog */}
+            { this.state.displayChangeLog && (
+              <ChangeLog 
+                onClose={ onChangeLogClose } 
+                changeLog={ this.state.changeLog } />
             )}
 
             { /* EOF - Login form and spinner */}

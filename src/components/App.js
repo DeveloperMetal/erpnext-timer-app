@@ -6,8 +6,6 @@ import React from "react";
 import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaster, Toast, ProgressBar } from "@blueprintjs/core";
 import cls from "classnames";
 
-import { Condition, When, Else } from "bloom-conditionals";
-
 // App Components
 import { BackendProvider, BackendConsumer } from "../connectors/Data";
 import Login from "./Login";
@@ -29,6 +27,8 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
 
     this.state = {
       displayApp: false,
+      displayChangeLog: false,
+      changeLog: {},
       updateProgress: null,
       updateReady: false
     }
