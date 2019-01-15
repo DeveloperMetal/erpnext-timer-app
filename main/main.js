@@ -66,7 +66,6 @@ init.then(() => {
       },
       show: false,
       autoHideMenuBar : true,
-      titleBarStyle: 'hidden',
       alwaysOnTop: true
     });
 
