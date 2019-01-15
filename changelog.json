@@ -10,6 +10,8 @@
             "Login screen now remembers your inputs so they don't get wiped out on login errors.",
             "Global show/display shortcut will now move the app window to another screen instead of automatically hiding the app. To hide the app the mouse must be placed on the same screen as the app."
         ],
-        "removed": []
+        "removed": [
+            "Sentry api generation tool stores project token keys right in project root. Removed exposed key and file from project."
+        ]
     }
 ]
