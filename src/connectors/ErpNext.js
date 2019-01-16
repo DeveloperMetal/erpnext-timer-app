@@ -653,6 +653,7 @@ const API : DataTypes.ConnectorAPI = {
           return Object.assign({}, result, {
             description: parser.body?parser.body.textContent || "":"",
             is_running: result.is_running?true:false, // I want booleans
+            last_open_timer: result.last_open_timer?moment(result.last_open_timer, dateTimeFormat):null,
             tags: result.tags.split(',').reduce((c,t) => {
               if ( t ) c.push(t);
               return c;
