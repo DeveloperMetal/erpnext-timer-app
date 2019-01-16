@@ -5,7 +5,8 @@
         "changed": [
             "Updated react dependencies.",
             "Updated blueprintjs dependencies.",
-            "Fixes bug where MacOS dock api was causing issues on Windows"
+            "Fixes bug where MacOS dock api was causing issues on Windows",
+            "ESM module update"
         ]
     },
     {
