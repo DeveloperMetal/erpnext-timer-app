@@ -13,7 +13,6 @@ The following projects were used to build this app:
 - [Electron Desktop Idle](https://github.com/bithavoc/node-desktop-idle) - Track user idle time.
 - [Axios](https://github.com/axios/axios) - HTTP(s) remote request library to handle rest api.
 - [Nwb](https://github.com/insin/nwb) - cli tools to handle react building and live reload during development
-- [Electron Packager](https://github.com/electron-userland/electron-packager) - Compile native applications for win, mac, linux
 - [nwb-electron-starter](https://github.com/brumm/nwb-electron-starter) - A clean nwb setup for electron + nwb app development.
 
 # ERPNext Connector
@@ -49,14 +48,14 @@ There should be a logout option in the settings page as well as the login widget
 
 # TODO
 
-- [ ] Add Windows installer
-- [ ] Add Mac DMG installer
-- [ ] Add Linux Installer?
-- [ ] Finish erpnext connector to send/receipt timesheet info
-- [ ] Build task entry details popup
-- [ ] Close and minimize to tray actions
+- [X] Add Windows installer
+- [X] Add Mac DMG installer
+- [X] Add Linux Installer?
+- [X] Finish erpnext connector to send/receipt timesheet info
+- [X] Build task entry details popup
+- [X] Close and minimize to tray actions
 - [ ] Logout button inside settings
 - [ ] Add quit app in settings page and login page.
 - [ ] Add settings idle timeout settings
-- [ ] Add task icon active task icon generation
+- [X] Add task icon active task icon generation
 - [ ] Tie desktop idle to current cative task to remind user of active timer.
