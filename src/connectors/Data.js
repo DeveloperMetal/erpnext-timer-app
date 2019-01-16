@@ -265,6 +265,25 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       let activities = results[1];
       let tasks = results[2];
       tasks.sort((a, b) => (a.is_running?1:0) < (b.is_running?1:0)? 1:0);
+
+      // let figure out if we have a running task and inform the main process of it
+      let foundRunningTask = false;
+      for(let task of tasks) {
+        if ( task.is_running && task.last_open_timer ) {
+          let timestamp = task.last_open_timer.unix();
+          if ( timestamp ) {
+            foundRunningTask = true;
+            ipcRenderer.send('timer-started', task.total_hours, timestamp );
+            break;
+          }
+        }
+      }
+
+      if ( !foundRunningTask ) {
+        ipcRenderer.send('timer-stopped');
+      }
+
+
       this.setState({
         projects,
         activities,
@@ -280,7 +299,6 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .startTask(task, activity, timestamp, this.state.user.employee_name)
       .then(() => {
-        ipcRenderer.send('timer-started');
         this.listTasks();
       })
       .catch(err => {
@@ -293,7 +311,6 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .stopTask(task, timestamp, this.state.user.employee_name)
       .then(() => {
-        ipcRenderer.send('timer-stopped');
         return this.listTasks();
       })
       .catch(err => {

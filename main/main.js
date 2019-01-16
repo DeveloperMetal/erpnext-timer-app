@@ -17,12 +17,16 @@ import keytar from 'keytar';
 import { buildTrayMenu } from './trayMenu';
 import { TrayState, TrayAnimation } from './trayAnimations';
 import changeLog from '../changelog.json';
+import moment from "moment";
+import momentDurationFormatSetup from "moment-duration-format";
+momentDurationFormatSetup(moment);
 
 const KEYTAR_SERVICE = 'com.bloomstack.timerapp';
 const SHOW_TRAY_DEBUGGER = true;
 const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()}/dist/index.html`
 
-let mainWindow
+let mainWindow;
+let timerInterval = false;
 
 autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
@@ -67,7 +71,6 @@ init.then(() => {
       },
       show: false,
       autoHideMenuBar : true,
-      titleBarStyle: 'hidden',
       alwaysOnTop: true
     });
 
@@ -96,7 +99,6 @@ init.then(() => {
         mainWindow.webContents.send("message", "Begin App...");
         autoUpdater.checkForUpdatesAndNotify();
       }
-
     });
 
     buildTrayMenu(app, mainWindow, tray, false, SHOW_TRAY_DEBUGGER);
@@ -301,12 +303,31 @@ init.then(() => {
       buildTrayMenu(app, mainWindow, tray, false, SHOW_TRAY_DEBUGGER);
     })
 
-    ipcMain.on('timer-started', (event) => {
+    ipcMain.on('timer-started', (event, hours, from_time_ms) => {
+      if ( typeof from_time_ms === undefined ) {
+        return;
+      }
+
       trayState.setTimerRunning();
+      hours = Math.floor((hours || 0) * 3600000);
+      const from_time = moment(from_time_ms, "X");
+
+      if ( timerInterval ) {
+        clearInterval(timerInterval);
+      }
+      timerInterval = setInterval(() => {
+        let to_time = moment();
+        let total_ms = moment.duration(to_time.diff(from_time), "ms").asMilliseconds();
+        app.dock.setBadge(moment.duration(hours + total_ms, "ms").format())
+      }, 1000)
     })
 
     ipcMain.on('timer-stopped', (event) => {
       trayState.setIdle();
+      if ( timerInterval ) {
+        clearInterval(timerInterval);
+      }
+      app.dock.setBadge("");
     })
 
     mainWindow.loadURL(windowUrl);

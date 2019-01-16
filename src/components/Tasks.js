@@ -75,8 +75,6 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
       from_time: moment(this.props.task.last_open_timestamp)
     })
 
-    ipcRenderer.send('timer-started');
-
     this.setupTimer();
   }
 
@@ -251,8 +249,6 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     const onStopTask = (task : DataTypes.Task) => {
       return this.onStopTask(task);
     }
-
-    console.log("List tasks: ", this.props.backend.tasks);
 
     return <div className="page">
       <div className="page-title">Tasks</div>
