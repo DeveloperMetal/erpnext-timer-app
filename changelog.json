@@ -3,10 +3,18 @@
         "date": "2019-01-15",
         "message": "Small library version updates to keep timer moving with its dependencies.",
         "changed": [
-            "Updated react dependencies.",
-            "Updated blueprintjs dependencies.",
             "Fixes bug where MacOS dock api was causing issues on Windows",
-            "ESM module update"
+            "Updated react dependencies.",
+            "Updated @blueprintjs/core to 3.11.0",
+            "Updated @blueprintjs/datetime to 3.6.0",
+            "Updated @blueprintjs/select to 3.5.0",
+            "Updated @blueprintjs/table to 3.4.0",
+            "Updated ESM module to 3.1.0",
+            "Updated nwb to version 0.23.0",
+            "Updated react to 16.7.0",
+            "Updated react-dom to 16.7.0",
+            "Updated react-hot-loader to 4.6.3",
+            "Updated react-measure to 2.2.2"
         ]
     },
     {
