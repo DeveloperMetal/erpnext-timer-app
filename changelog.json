@@ -3,7 +3,8 @@
         "date": "2019-01-15",
         "message": "Hi Friendos! on this update the focus was on UI polish and consistency.",
         "added": [
-            "Added changelog screen before login."
+            "Changelog screen before login.",
+            "New Mac OS app badge timer. On timer start/stop the app icon will display the active timer."
         ],
         "changed": [
             "Titlebar style not hidden anymore so app can be dragged and resized on Mac OS version.",

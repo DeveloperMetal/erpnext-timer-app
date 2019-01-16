@@ -1,8 +1,12 @@
 // @flow
+import { remote } from "electron";
 
 // Third party Components
 import React from "react";
-import { Button, Card } from "@blueprintjs/core";
+import { Button, Card, Callout, Intent } from "@blueprintjs/core";
+import moment from "moment";
+
+const version = remote.app.getVersion();
 
 export default class ChangeLog extends React.PureComponent {
   constructor(props) {
@@ -11,14 +15,20 @@ export default class ChangeLog extends React.PureComponent {
 
   render() {
     const currentLog = this.props.changeLog[0];
-    console.log(currentLog);
 
     return <div className="changelog">
-      <Card elevation="3">
+      <div className="header">
+        <div className="version">v{ version }</div>
+      </div>
+      <Callout 
+        intent={ Intent.SUCCESS }
+        icon="updated"
+        title={moment(currentLog.date).format("Y-MM-DD") + " | v" + version}
+        >
         <div className="message">{currentLog.message || ""}</div>
-      </Card>
+      </Callout>
       { currentLog && (
-        <Card elevation="3" className="items">
+        <Card elevation="0" className="items">
           <ul>
           { (currentLog.added || []).map((item, key) => (
             <li key={ `added-${key}`} className="added">{ item }</li>
@@ -33,7 +43,7 @@ export default class ChangeLog extends React.PureComponent {
         </Card>
       )}
       <div className="actions">
-        <Button large text="Next" onClick={ this.props.onClose } rightIcon="arrow-right" />
+        <Button large intent={ Intent.PRIMARY } text="Next" onClick={ this.props.onClose } rightIcon="arrow-right" />
       </div>
     </div>;
   }
