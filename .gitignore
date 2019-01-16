@@ -4,6 +4,7 @@
 /releases
 /node_modules
 .electron-symbols
+*.code-workspace
 npm-debug.log
 .vscode
 *.log
