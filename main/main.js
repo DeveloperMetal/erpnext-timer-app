@@ -27,8 +27,12 @@ const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()
 
 let mainWindow;
 let timerInterval = false;
+let isUpdating = false;
+
+log.transports.file.file = __dirname + '/bloomstack-timer.log';
 
 autoUpdater.logger = log;
+autoUpdater.logger.level = 'silly';
 autoUpdater.autoDownload = true;
 
 let init = Promise.resolve();
@@ -91,7 +95,7 @@ init.then(() => {
     trayState.setIdle(); // start with stopped timer icon
 
     mainWindow.webContents.on("did-fail-load", (e) => {
-      console.error("Error loading app: ", e);
+      log.error("Error loading app: ", e);
     });
 
     mainWindow.webContents.once('dom-ready', () => {
@@ -148,7 +152,7 @@ init.then(() => {
 
 
     mainWindow.on('close', (event) => {
-      if ( !app.isQuiting ) {
+      if ( !app.isQuiting && !isUpdating ) {
         event.preventDefault();
         mainWindow.hide();
       }
@@ -160,6 +164,7 @@ init.then(() => {
 
     autoUpdater.on('update-available', (info) => {
       Sentry.captureMessage("Update available...");
+      isUpdating = true;
       mainWindow.webContents.send("update-available");
     });
 
@@ -176,11 +181,13 @@ init.then(() => {
       let log_message = "Download speed: " + progressObj.bytesPerSecond;
       log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
       log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+      log.info(log_message);
       mainWindow.webContents.send("message", log_message);
       mainWindow.webContents.send("update-download-progress", progressObj);
     });
 
     autoUpdater.on('update-downloaded', (info) => {
+      log.info("Update ready: ", JSON.stringify(info));
       mainWindow.webContents.send("message", "Update downloaded");
       mainWindow.webContents.send("update-ready");
       Sentry.captureMessage("Update downloaded and ready to install!");
@@ -201,6 +208,7 @@ init.then(() => {
     });
 
     ipcMain.on('update-install', (event) => {
+      log.info("Installing update...");
       autoUpdater.quitAndInstall();
       event.returnValue = true;
     });
@@ -211,7 +219,7 @@ init.then(() => {
           event.returnValue = result;
         })
         .catch((err) => {
-          console.error(err);
+          log.error(err);
           event.returnValue = '';
         })
       } else {
@@ -250,8 +258,6 @@ init.then(() => {
     }
 
     ipcMain.on('api:appStarted', (event, request) => {
-      console.log("on App Started");
-
       let response = {
         displayChangeLog: false,
         changeLog
@@ -259,11 +265,10 @@ init.then(() => {
 
       let lastChangeLog = settings.get('last-changelog-displayed');
       if ( lastChangeLog != app.getVersion() ) {
-        //settings.set('last-changelog-displayed', app.getVersion());
+        settings.set('last-changelog-displayed', app.getVersion());
         response.displayChangeLog = true;
       }
 
-      console.log(response);
       event.sender.send(request.response_channel, response);
 
     })
@@ -278,7 +283,7 @@ init.then(() => {
               return result;
             })
             .catch((err) => {
-              console.error(err);
+              log.error(err);
               return result;
             });
           }
@@ -289,7 +294,7 @@ init.then(() => {
           return event.sender.send(request.response_channel, response);
         })
         .catch((error) => {
-          console.error(error);
+          log.error(error);
           event.sender.send(request.error_channel, error);
         })
 
@@ -333,7 +338,7 @@ init.then(() => {
     mainWindow.loadURL(windowUrl);
 
   })
-  .catch(err => console.log('An error occurred: ', err))
+  .catch(err => log.info('An error occurred: ', err))
 
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
@@ -368,4 +373,4 @@ function isMouseOnAppDisplay(win) {
   return appDisplay.id === mouseDisplay.id;
 }
 
-process.on('uncaughtException', console.log)
+process.on('uncaughtException', log.info)
