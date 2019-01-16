@@ -1,7 +1,7 @@
 {
   "name": "bloomstack-timer-app",
   "productName": "Bloomstack Timer",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "description": "An app to track work hours on erpnext based servers",
   "main": "main/index.js",
   "private": false,
@@ -50,10 +50,10 @@
     }
   },
   "dependencies": {
-    "@blueprintjs/core": "^3.1.0",
-    "@blueprintjs/datetime": "^3.3.0",
-    "@blueprintjs/select": "^3.1.0",
-    "@blueprintjs/table": "^3.1.0",
+    "@blueprintjs/core": "^3.11.0",
+    "@blueprintjs/datetime": "^3.6.0",
+    "@blueprintjs/select": "^3.5.0",
+    "@blueprintjs/table": "^3.4.0",
     "@sentry/electron": "^0.15.0",
     "bloom-conditionals": "^1.0.1",
     "bloom-day-timeline": "ssh://git@github.com:DigiThinkIT/bloom-day-timeline.git",
@@ -72,10 +72,10 @@
     "modern-normalize": "^0.5.0",
     "moment": "^2.23.0",
     "moment-duration-format": "^2.2.2",
-    "react": "^16.4.2",
-    "react-dom": "^16.4.2",
-    "react-hot-loader": "^4.3.11",
-    "react-measure": "^2.0.2"
+    "react": "^16.7.0",
+    "react-dom": "^16.7.0",
+    "react-hot-loader": "^4.6.3",
+    "react-measure": "^2.2.2"
   },
   "prettier": {
     "printWidth": 100,
@@ -101,7 +101,7 @@
     "nwb": "0.21.x",
     "nwb-less": "^0.7.1",
     "png2icons": "^1.0.1",
-    "sharp": "^0.21.0",
+    "sharp": "^0.21.2",
     "watch": "^1.0.2"
   },
   "homepage": "https://digithinkit.com",

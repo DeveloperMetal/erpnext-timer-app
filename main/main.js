@@ -313,26 +313,31 @@ init.then(() => {
         return;
       }
 
-      trayState.setTimerRunning();
-      hours = Math.floor((hours || 0) * 3600000);
-      const from_time = moment(from_time_ms, "X");
+      if ( app.dock ) {
+        trayState.setTimerRunning();
+        hours = Math.floor((hours || 0) * 3600000);
+        const from_time = moment(from_time_ms, "X");
 
-      if ( timerInterval ) {
-        clearInterval(timerInterval);
+        if ( timerInterval ) {
+          clearInterval(timerInterval);
+        }
+        timerInterval = setInterval(() => {
+          let to_time = moment();
+          let total_ms = moment.duration(to_time.diff(from_time), "ms").asMilliseconds();
+          app.dock.setBadge(moment.duration(hours + total_ms, "ms").format())
+        }, 1000)
       }
-      timerInterval = setInterval(() => {
-        let to_time = moment();
-        let total_ms = moment.duration(to_time.diff(from_time), "ms").asMilliseconds();
-        app.dock.setBadge(moment.duration(hours + total_ms, "ms").format())
-      }, 1000)
-    })
+    });
 
     ipcMain.on('timer-stopped', (event) => {
       trayState.setIdle();
       if ( timerInterval ) {
         clearInterval(timerInterval);
       }
-      app.dock.setBadge("");
+      
+      if ( app.dock ) {
+        app.dock.setBadge("");
+      }
     })
 
     mainWindow.loadURL(windowUrl);

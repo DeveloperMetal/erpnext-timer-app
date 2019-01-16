@@ -1,6 +1,15 @@
 [
     {
         "date": "2019-01-15",
+        "message": "Small library version updates to keep timer moving with its dependencies.",
+        "changed": [
+            "Updated react dependencies.",
+            "Updated blueprintjs dependencies.",
+            "Fixes bug where MacOS dock api was causing issues on Windows"
+        ]
+    },
+    {
+        "date": "2019-01-15",
         "message": "Hi Friendos! on this update the focus was on UI polish and consistency.",
         "added": [
             "Changelog screen before login.",
