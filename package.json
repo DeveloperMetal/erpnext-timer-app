@@ -93,7 +93,6 @@
     "electron": "^4.0.1",
     "electron-builder": "^20.28.4",
     "electron-devtools-installer": "^2.2.4",
-    "electron-packager": "^12.1.0",
     "electron-rebuild": "^1.8.2",
     "express": "^4.16.3",
     "flow-bin": "^0.90.0",
