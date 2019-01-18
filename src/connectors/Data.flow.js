@@ -62,7 +62,7 @@ export type Task = {
   description : string,
   total_hours : number,
   is_running : boolean,
-  last_open_timestamp : Moment | null,
+  last_open_timer : Moment | null,
   project_label : string,
   project_id : string,
   parent_id : string | null,
@@ -82,6 +82,9 @@ export type TimelineItem = {
   is_running?: boolean,
   canResize?: boolean,
   canDrag?: boolean,
+  onDelete?: (item : TimelineItem) => void | null, 
+  onStopTimer?: (item : TimelineItem) => void | null, 
+  onOpenBrowser?: (url : string) => void | null, 
 }
 
 export type Activity = {
@@ -100,11 +103,12 @@ export type TimeLog = {
 export type ConnectorAPI = {
   login(auth : Auth) : Promise<any>,
   listActivities() : Promise<Activity[]>,
-  listDayTimeline(day: Moment) : Promise<TimelineItem[]>,
+  listDayTimeline(employe_name:string, day: Moment) : Promise<TimelineItem[]>,
   updateTimelineItem(item : TimelineItem) : Promise<TimelineItem>,
   listProjects() : Promise<Project[]>,
   listTasks(employee_name : string) : Promise<Task[]>,
   newTask(task : Task) : Promise<any>,
+  deleteTimeblock : (timeblock_id : string) => Promise<any>,
   startTask(
     task : Task, 
     activity : Activity,

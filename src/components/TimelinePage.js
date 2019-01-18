@@ -30,25 +30,25 @@ const TimeBlockContentRenderer = (item : DataTypes.TimelineItem) => {
     <MenuItem 
       icon="time" 
       text="Open Timesheet on browser"
-      onClick={() => onOpenBrowser(`Doctype://Form/Timesheet/${timesheet_id}`)}
+      onClick={() => onOpenBrowser?onOpenBrowser(`Doctype://Form/Timesheet/${timesheet_id}`):'' }
     />
     <MenuItem 
       icon="annotation" 
       text="Open Task on browser"
-      onClick={() => onOpenBrowser(`Doctype://Form/Task/${task_id}`)}
+      onClick={() => onOpenBrowser?onOpenBrowser(`Doctype://Form/Task/${task_id}`):''}
     />
     { is_running && ( <MenuItem 
       icon="stop" 
       text="Stop Timer" 
       intent={Intent.WARNING} 
-      onClick={() => onStopTimer(item)}  /> ) 
+      onClick={() => onStopTimer?onStopTimer(item):''}  /> ) 
     }
     <Menu.Divider />
     <MenuItem 
       icon="delete" 
       text="Delete" 
       intent={Intent.DANGER} 
-      onClick={() => onDelete(item)} />
+      onClick={() => onDelete?onDelete(item):''} />
   </Menu>;
 
   return <React.Fragment>

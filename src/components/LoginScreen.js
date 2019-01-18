@@ -24,9 +24,9 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
   constructor(props : LoginTypes.Props) {
     super(props)
 
-    let rememberLogin = '';//ipcRenderer.sendSync('getSettings', 'rememberLogin', false);
-    let autoLogin = '';//ipcRenderer.sendSync('getSetting', 'autoLogin', false);
-    let host = '';//ipcRenderer.sendSync('getSetting', 'host', '');
+    let rememberLogin = false;
+    let autoLogin = false;
+    let host = '';
     let usr = '', pwd = '';
     
     this.state = {
@@ -38,7 +38,8 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
       rememberLogin,
       autoLogin,
       loadingSettings: true,
-      displayChangeLog: false
+      displayChangeLog: false,
+      changeLog: []
     }
 
   }

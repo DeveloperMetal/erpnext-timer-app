@@ -8,10 +8,7 @@ import moment from "moment";
 
 const version = remote.app.getVersion();
 
-export default class ChangeLog extends React.PureComponent {
-  constructor(props) {
-    super(props);
-  }
+export default class ChangeLog extends React.PureComponent<any, any> {
 
   render() {
     const currentLog = this.props.changeLog[0];

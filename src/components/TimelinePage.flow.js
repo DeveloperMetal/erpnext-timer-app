@@ -8,5 +8,6 @@ export type TimelineCompProps = {
 }
 
 export type TimelineCompState = {
-  zoom: number
+  zoom: number,
+  refresh: number,
 }

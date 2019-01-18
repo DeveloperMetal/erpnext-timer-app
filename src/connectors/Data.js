@@ -55,7 +55,7 @@ function bindCallbacks(obj : any, names : string[]) {
   return result;
 }
 
-const context = React.createContext();
+const context : any = React.createContext();
 
 export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
   connector : DataTypes.ConnectorAPI;
@@ -311,7 +311,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return null;
   }
 
-  deleteTimeblock(timeblock_id) : Promise<any> {
+  deleteTimeblock(timeblock_id : string) : Promise<any> {
     return this.connector
       .deleteTimeblock(timeblock_id)
       .then(() => {

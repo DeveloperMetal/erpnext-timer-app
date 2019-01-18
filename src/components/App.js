@@ -62,7 +62,7 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
     ipcRenderer.send("update-install");
   }
 
-  onLoggedIn(auth : DataTypes.Auth, options? : DataTypes.LoginOptions) {
+  onLoggedIn(auth : DataTypes.Auth, options : DataTypes.LoginOptions | null) {
     if ( options ) {
       if ( options.rememberLogin ) {
         ipcRenderer.sendSync('saveCredentials', auth.usr, auth.pwd);
@@ -100,7 +100,7 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
 
   render() {
     const onLoggedIn : Types.CallbackOnLoggedIn = 
-      (auth : DataTypes.Auth, options? : DataTypes.LoginOptions) => {
+      (auth : DataTypes.Auth, options : DataTypes.LoginOptions | null) => {
         return this.onLoggedIn(auth, options);
       }
 
