@@ -2,6 +2,7 @@
 
 import { trackError, trackUser, trackExtra } from "../tracking";
 import { ipcRenderer } from 'electron';
+import { mainProcessAPI } from '../utils';
 
 // Flow types
 import * as DataTypes from "./Data.flow";
@@ -96,7 +97,9 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "updateActiveTimelineBlock",
           "updateTimelineBlock",
           "setCurrentDate",
-          "newTask"
+          "newTask",
+          "getTaskById",
+          "deleteTimeblock"
         ]),
       }
     }
@@ -162,6 +165,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
             "employee_name": user
           });
 
+          mainProcessAPI('setServerUrl', auth.host);
+
           this.setState({
             attemptingLogin: false,
             loggedIn: true,
@@ -199,7 +204,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }
 
     return this.connector
-      .listDayTimeline(date)
+      .listDayTimeline(this.state.user.employee_name, date)
       .then((results : DataTypes.TimelineItem[]) => {
         this.setState({
           timeline: results,
@@ -283,15 +288,41 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         ipcRenderer.send('timer-stopped');
       }
 
-
-      this.setState({
-        projects,
-        activities,
-        tasks
+      return new Promise((resolve) => {
+        this.setState({
+          projects,
+          activities,
+          tasks
+        }, () => {
+          resolve();
+        });
       });
-      return;
     })
     .catch(err => this.throwError(err));
+  }
+
+  getTaskById(task_id : string) : DataTypes.Task | null {
+    for(let task of this.state.tasks) {
+      if ( task.id === task_id) {
+        return task;
+      }
+    }
+
+    return null;
+  }
+
+  deleteTimeblock(timeblock_id) : Promise<any> {
+    return this.connector
+      .deleteTimeblock(timeblock_id)
+      .then(() => {
+        return Promise.all([
+          this.listTasks(),
+          this.listDayTimeline()
+        ]);
+      })
+      .catch(err => {
+        this.throwError(err)
+      });
   }
 
   startTask(task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any> {

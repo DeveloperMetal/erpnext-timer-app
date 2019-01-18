@@ -70,3 +70,7 @@ export function makeCancelable(promise) {
     }
   }
 }
+
+export function promiseFinally(promise, fn) {
+  return promise.then(fn).catch(fn);
+}

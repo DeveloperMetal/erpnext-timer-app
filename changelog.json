@@ -1,7 +1,24 @@
 [
     {
+        "version": "1.0.25",
+        "date": "2019-01-17",
+        "message": "On this update, focus on bug fixes and small UI updates to make timeline more usable",
+        "added": [
+            "Timeline time blocks now have a cog icon.",
+            "Time block menu new open timesheet on browser link",
+            "Time block menu new open task on browser link",
+            "Time block menu new Stop timer action",
+            "Time block menu new delete entry action",
+            "Electron url navigation blocked from going anywhere outside of our own protocols",
+            "Doctype:// protocol can open specific doctypes on browser"
+        ],
+        "changed": [
+            "Fix: employee id was not passed correctly to app and query causing all users to see each other's entries."
+        ]
+    },
+    {
         "version": "1.0.24",
-        "date": "2019-01-15",
+        "date": "2019-01-16",
         "message": "Small library version updates to keep timer moving with its dependencies.",
         "changed": [
             "Fixes bug where MacOS dock api was causing issues on Windows",

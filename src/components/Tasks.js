@@ -48,7 +48,7 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
     super(props)
 
     this.state = {
-      from_time: null,
+      from_time: props.task.is_running?props.task.last_open_timer:null,
       to_time: null,
       waiting: false
     }
@@ -72,7 +72,7 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
 
   onTimerStarted() {
     this.setState({
-      from_time: moment(this.props.task.last_open_timestamp)
+      from_time: moment(this.props.task.last_open_timer)
     })
 
     this.setupTimer();

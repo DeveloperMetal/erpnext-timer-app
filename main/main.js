@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/electron';
 
 Sentry.init({dsn: 'https://5af676ee91b945a5aed4e106e339a204@sentry.io/1301366', environment: DEV?"development":"production"});
 
-import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain } from 'electron';
+import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain, shell } from 'electron';
 import template from './menu-template';
 import windowStateKeeper from 'electron-window-state';
 import { autoUpdater } from 'electron-updater';
@@ -28,6 +28,7 @@ const windowUrl = DEV ? `http://localhost:${PORT}/` : `file://${app.getAppPath()
 let mainWindow;
 let timerInterval = false;
 let isUpdating = false;
+let serverUrl = '';
 
 log.transports.file.file = __dirname + '/bloomstack-timer.log';
 
@@ -142,6 +143,22 @@ init.then(() => {
           }
         }
       });
+
+      function handleUrlNavigation(event, url) {
+        let urlParser = new URL(url);
+        // prevent all external url navigation on app.
+        // will only allow our own protocols
+        event.preventDefault();
+
+        let openUrl = `${serverUrl}/desk#${urlParser.hostname}${urlParser.pathname}`;
+
+        if ( urlParser.protocol == 'doctype:' ) {
+          shell.openExternal(openUrl)
+        }
+      }
+
+      mainWindow.webContents.on('will-navigate', handleUrlNavigation);
+      mainWindow.webContents.on('new-window', handleUrlNavigation)
     
     })
 
@@ -256,6 +273,11 @@ init.then(() => {
         }
       })
     }
+
+    ipcMain.on('api:setServerUrl', (event, request) => {
+      serverUrl = request.args[0];
+      event.sender.send(request.response_channel, true);
+    })
 
     ipcMain.on('api:appStarted', (event, request) => {
       let response = {

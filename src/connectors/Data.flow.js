@@ -72,6 +72,7 @@ export type Task = {
 
 export type TimelineItem = {
   id: string,
+  timesheet_id: string,
   start: Moment,
   end: Moment,
   color?: string | null,

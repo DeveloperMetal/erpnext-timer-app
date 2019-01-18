@@ -290,8 +290,9 @@ class FrappeResource {
   }
 
   delete(name : string) : Promise<any> {
-    return axios.delete(`${this.host}/api/resource/${this.resource}`)
+    return axios.delete(`${this.host}/api/resource/${this.resource}/${name}`)
       .then(response => {
+        console.log("delete response: ", response.data);
         return response.data;
       })
       .catch(err => {
@@ -340,6 +341,12 @@ function findEmployeeByUserId(user_id : string) : Promise<any> {
     filters: [
       ["user_id", "=", user_id]
     ]
+  }).then((result) => {
+    if ( result.length > 0 ) {
+      return result[0];
+    }
+
+    return null;
   });
 }
 
@@ -553,6 +560,7 @@ const API : DataTypes.ConnectorAPI = {
   },
 
   listDayTimeline(
+      employee_name : string,
       day : Moment
     ) : Promise<DataTypes.TimelineItem[]> {
     
@@ -561,6 +569,7 @@ const API : DataTypes.ConnectorAPI = {
 
     return frappe.api("bloomstack_timer.api.list_day_timeline")
       .get({
+        employee_name,
         start_date: day_start.format(dateTimeFormat),
         end_date: day_end.format(dateTimeFormat),
         now: moment().format(dateTimeFormat)
@@ -570,6 +579,7 @@ const API : DataTypes.ConnectorAPI = {
           let parser = new DOMParser().parseFromString((d.task_description || ""), "text/html");
           let item : DataTypes.TimelineItem = {
             id: d.id,
+            timesheet_id: d.timesheet_id,
             start: moment(d.start, dateTimeFormat),
             end: d.end?moment(d.end, dateTimeFormat):moment(),
             task_id: d.task_id,
@@ -646,7 +656,9 @@ const API : DataTypes.ConnectorAPI = {
     // first go through open timesheets and details
 
     return frappe.api("bloomstack_timer.api.list_tasks")
-      .get()
+      .get({
+        employee_name
+      })
       .then((results) => {
         return results.message.map(result => {
           let parser = new DOMParser().parseFromString((result.description || ""), "text/html");
@@ -795,6 +807,17 @@ const API : DataTypes.ConnectorAPI = {
           });
       });
     
+  },
+
+  deleteTimeblock(timeblock_id : string) : Promise<any> {
+    return frappe
+      .resource("Timesheet Detail")
+      .delete(timeblock_id)
+      .then((result) => {
+        console.log("Timeblock delted: ", timeblock_id);
+        console.log(result);
+        return result;
+      });
   },
 
   newTask(task : DataTypes.Task) : Promise<any> {
