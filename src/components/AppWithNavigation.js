@@ -13,6 +13,7 @@ import VerticalNav from "bloom-nav-column";
 import TaskPage from "./Tasks";
 import TimelinePage from "./TimelinePage";
 import AddTaskPage from "./AddTaskPage";
+import SettingsPage from "./SettingsPage";
 
 const iconSize : number = 24;
 
@@ -60,9 +61,11 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
 
   onPathChange(path : string) {
     if ( path != "expand" ) {
-      this.setState({
-        activePath: path
-      })
+      if ( path ) {
+        this.setState({
+          activePath: path
+        })
+      }
     } else {
       let menuItems : Array<NavTypes.MenuItems> = this.state.menuItems.slice(0);
       let menuCollapsed : boolean = !this.state.menuCollapsed;
@@ -91,6 +94,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         { activePath === "timesheet/tasks" && ( <TaskPage nav={onPathChange} /> ) }
         { activePath === "timesheet" && ( <TimelinePage nav={onPathChange} /> ) }
         { activePath === "timesheet/new-task" && ( <AddTaskPage nav={onPathChange } /> ) }
+        { activePath === "settings" && ( <SettingsPage nav={onPathChange } /> ) }
       </div>
     </div>
   }

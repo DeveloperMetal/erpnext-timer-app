@@ -148,9 +148,9 @@ init.then(() => {
         // will only allow our own protocols
         event.preventDefault();
 
-        let openUrl = `${serverUrl}/desk#${urlParser.hostname}${urlParser.pathname}`;
 
         if ( urlParser.protocol == 'doctype:' ) {
+          let openUrl = `${serverUrl}/desk#${urlParser.hostname}${urlParser.pathname}`;
           shell.openExternal(openUrl)
         }
       }
