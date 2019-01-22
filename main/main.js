@@ -1,7 +1,5 @@
 const { DEV, PORT = '8080' } = process.env
-
-import * as Sentry from '@sentry/electron';
-
+const Sentry = require('@sentry/electron');
 Sentry.init({dsn: 'https://5af676ee91b945a5aed4e106e339a204@sentry.io/1301366', environment: DEV?"development":"production"});
 
 import { app, BrowserWindow, screen, Menu, Tray, globalShortcut, ipcMain, shell } from 'electron';
