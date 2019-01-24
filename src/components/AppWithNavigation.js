@@ -6,7 +6,7 @@ import React from "react"
 import * as NavTypes from "./AppWithNavigation.flow";
 
 // Thirdparty Components
-import { Icon, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaster, Toast } from "@blueprintjs/core";
+import { Icon, Tooltip, Button, ButtonGroup, Spinner, Intent, Alignment, Position, Toaster, Toast } from "@blueprintjs/core";
 import VerticalNav from "bloom-nav-column";
 
 // Components
@@ -29,22 +29,22 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         {
           path: "expand",
           label: "Collapse",
-          icon: <Icon icon="menu" iconSize={iconSize} />
+          icon: <Tooltip content="Expand/Collapse navigation labels"><Icon icon="menu" iconSize={iconSize} /></Tooltip>
         },
         {
           path: "timesheet",
           label: "Timesheet",
-          icon: <Icon icon="calendar" iconSize={iconSize} />,
+          icon: <Tooltip content="View timesheet timeline"><Icon icon="calendar" iconSize={iconSize} /></Tooltip>,
           items: [
             {
               path: "tasks",
               label: "Tasks",
-              icon: <Icon icon="timeline-events" iconSize={iconSize} />,
+              icon: <Tooltip content="View tasks and start/stop timer."><Icon icon="time" iconSize={iconSize} /></Tooltip>,
             },
             {
               path: "new-task",
               label: "New Task",
-              icon: <Icon icon="plus" iconSize={iconSize} />,
+              icon: <Tooltip content="Create a new task. (Note that a project must exist on the server to use this feature)"><Icon icon="plus" iconSize={iconSize} /></Tooltip>,
             },
           ]
         },
@@ -52,7 +52,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         {
           path: "settings",
           label: "Settings",
-          icon: <Icon icon="cog" iconSize={iconSize} />,
+          icon: <Tooltip content="App Settings"><Icon icon="cog" iconSize={iconSize} /></Tooltip>,
         }
   
       ]

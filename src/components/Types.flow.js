@@ -6,9 +6,9 @@ import type { Node } from "react";
 export type CallbackOnLoggedIn = (auth : DataTypes.Auth, options : DataTypes.LoginOptions | null) => void
 
 export type CrossPlatLabel = {
-    darwin? : String,
-    windows? : String,
-    default? : String
+    darwin? : string,
+    windows? : string,
+    default? : string
   };
   
 export type CrossPlatIcon = {
@@ -16,3 +16,5 @@ export type CrossPlatIcon = {
     windows? : Node,
     default? : Node
 };
+
+export type CrossPlatforms = Array<string>;

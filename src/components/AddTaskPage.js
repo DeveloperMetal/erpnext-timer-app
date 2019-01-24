@@ -77,7 +77,7 @@ class AddTaskForm extends React.PureComponent<Props, State> {
 
     return <div className="page new-task">
       <div className="page-title">New Task</div>
-      <div className="page-content">
+      <div className="page-content padded">
         <FormGroup
           label="Project"
           labelFor="task-project"

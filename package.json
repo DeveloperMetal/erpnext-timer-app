@@ -95,7 +95,7 @@
     "electron-devtools-installer": "^2.2.4",
     "electron-rebuild": "^1.8.2",
     "express": "^4.16.3",
-    "flow-bin": "^0.90.0",
+    "flow-bin": "^0.91.0",
     "minimist": "^1.2.0",
     "nwb": "0.23.x",
     "nwb-less": "^0.7.1",

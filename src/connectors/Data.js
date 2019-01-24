@@ -137,7 +137,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     });
   }
 
-  userMessage(message, done) {
+  userMessage(message : string, done : () => void) {
     this.setState((prevState : DataTypes.State) => {
       return { userMessages: [...prevState.userMessages, message] };
     }, () => {

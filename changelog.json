@@ -10,7 +10,7 @@
             "Global visibility shortcut customization with mac, pc, linux detection.",
             "You can now define what happens when a timer starts, either navigate to timesheet or stay in tasks.",
             "Tasks has a new search field. For now it is a simple character match search. Will add fuzzy search in a future update.",
-            "Added user toast message. Right now only used on settings to inform user when shortcut keys were successfully set on the OS.",
+            "Added user toast message. Right now only used on settings to inform user when shortcut keys were successfully set on the OS."
         ], 
         "changed": [
             "How settings are stored and managed internally",

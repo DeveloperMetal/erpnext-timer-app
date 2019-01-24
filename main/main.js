@@ -29,10 +29,7 @@ let timerInterval = false;
 let isUpdating = false;
 let serverUrl = '';
 
-log.transports.file.file = __dirname + '/bloomstack-timer.log';
-
 autoUpdater.logger = log;
-autoUpdater.logger.level = 'silly';
 autoUpdater.autoDownload = true;
 
 let init = Promise.resolve();
@@ -95,14 +92,12 @@ init.then(() => {
     trayState.setIdle(); // start with stopped timer icon
 
     function unregisterVisibleToggleShortcut() {
-      console.log("unregister visiblity toggle shortcut... ", userSettings.visibleToggleShortcut);
       if ( globalShortcut.isRegistered(userSettings.visibleToggleShortcut) ) {
         globalShortcut.unregister(userSettings.visibleToggleShortcut);
       }
     }
 
     function registerVisibleToggleShortcut() {
-      console.log("Register visibility shortcut: ", userSettings.visibleToggleShortcut);
       return globalShortcut.register(userSettings.visibleToggleShortcut, () => {
         let visible = mainWindow.isVisible();
 

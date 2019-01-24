@@ -6,7 +6,8 @@ import React from "react";
 import { Button, Menu, MenuItem, Intent, Icon } from "@blueprintjs/core";
 
 import type { ItemRenderer, ItemPredicate } from "@blueprintjs/core";
-import type { SpecialKey, NormalKey } from "./SettingsPage.flow";
+import type { SpecialKey } from "./SettingsPage.flow";
+import type { Element } from "react";
 
 export const PLATFORMS = {
   PC: ["win32", "linux"],
@@ -107,11 +108,11 @@ export const SPECIALKEYS: Array<SpecialKey> = [
 ]
 
 export function GenKeysFromCharCode(
-  startCode: Number,
-  endCode: Number
-): Array<NormalKey> {
+  startCode: number,
+  endCode: number
+): Array<SpecialKey> {
 
-  let result: Array<NormalKey> = [];
+  let result: Array<SpecialKey> = [];
   for (let c = startCode; c <= endCode; c++) {
     result.push({
       id: String.fromCharCode(c)
@@ -122,20 +123,20 @@ export function GenKeysFromCharCode(
 }
 
 export function GenKeys(
-  start: Number,
-  end: Number,
-  idFn: (idx: Number) => string,
-  iconFn: (key: string) => string
-): Array<NormalKey> {
+  start: number,
+  end: number,
+  idFn: (idx: number) => string,
+  iconFn?: (key: string) => string
+): Array<SpecialKey> {
 
-  let result: Array<NormalKey> = [];
+  let result: Array<SpecialKey> = [];
   for (let i = start; i <= end; i++) {
     let id = idFn(i);
     let icon = null;
     if ( iconFn ) {
       icon = iconFn(id);
     }
-    let kdef = { id };
+    let kdef : SpecialKey = { id };
     if ( icon ) {
       kdef.icon = { default: icon };
     }
@@ -145,7 +146,7 @@ export function GenKeys(
   return result
 }
 
-export const KEYS = GenKeysFromCharCode(48, 57) // 0 to 9
+export const KEYS : Array<SpecialKey> = GenKeysFromCharCode(48, 57) // 0 to 9
   .concat(GenKeysFromCharCode("A".charCodeAt(0), "Z".charCodeAt(0))) // A to Z
   .concat(GenKeys(1, 12, (idx) => `F${idx}`)) // F1 to F12
   .concat([
@@ -236,36 +237,39 @@ export const KEYS = GenKeysFromCharCode(48, 57) // 0 to 9
     }
   ]);
 
-export function findSpecialKey(id) {
+export function findSpecialKey(id : string) : SpecialKey | void {
   return SPECIALKEYS.find(item => item.id === id);
 }
 
-export function findKey(id) {
+export function findKey(id : string) : SpecialKey | void {
   return KEYS.find(item => item.id === id);
 }
 
-export const GetSpecialKeyLabel = (key) => {
+export function GetSpecialKeyLabel(key : SpecialKey) : string {
   if ( key.label === false ) {
     return "";
   } else if ( typeof key.label === "string" ) {
     return key.label;
-  } else if ( key.label ) {
-    if ( process.platform in key.label ) {
-      return Reflect.get(key.label, process.platform);
-    } else if ( "default" in key.label ) {
-      return key.label.default;
+  } else if ( key.label && typeof key.label.constructor === "object" ) {
+    let label : any = key.label;
+
+    if ( label.hasOwnProperty(process.platform) ) {
+      return Reflect.get(label, process.platform);
+    } else if ( label.hasOwnProperty("default") ) {
+      return label.default;
     }
   }
 
   return key.id;
 }
 
-export const GetSpecialKeyIcon = (key) => {
-  if ( key.icon ) {
-    if ( process.platform in key.icon ) {
-      return key.icon[process.platform];
-    } else if ( "default" in key.icon ) {
-      return key.icon.default;
+export function GetSpecialKeyIcon (key : SpecialKey) : any {
+  if ( key.hasOwnProperty("icon") && typeof key.icon !== undefined ) {
+    let icon : any = key.icon;
+    if ( icon.hasOwnProperty(process.platform) ) {
+      return Reflect.get(icon, process.platform);
+    } else if ( icon.hasOwnProperty("default") ) {
+      return Reflect.get(icon, "default");
     }
   }
 

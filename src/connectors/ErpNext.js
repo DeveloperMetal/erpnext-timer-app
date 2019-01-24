@@ -344,9 +344,9 @@ function findEmployeeByUserId(user_id : string) : Promise<any> {
   }).then((result) => {
     if ( result.length > 0 ) {
       return result[0];
+    } else {
+      throw new LoginError("Timer requires an employee record to function(for now)");
     }
-
-    return null;
   });
 }
 

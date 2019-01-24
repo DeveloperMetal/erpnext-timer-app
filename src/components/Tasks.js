@@ -13,12 +13,13 @@ import momentDurationFormatSetup from "moment-duration-format";
 momentDurationFormatSetup(moment);
 
 // Flow types
-import type{ 
+import type { 
   TaskListState, TaskListProps,
   TaskListItemProps, TaskListItemState
 } from "./Tasks.flow";
 import * as DataTypes from "../connectors/Data.flow";
 import type Moment from "moment";
+import * as ReactTypes from "react";
 
 // Components
 import { BackendConsumer } from "../connectors/Data";
@@ -222,8 +223,6 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       search: "",
       onTimerStartGoto: 'timesheet'
     }
-
-    this.searchRef = null;
   }
 
   componentDidMount() {
@@ -258,7 +257,7 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     return backend.actions.stopTask(task);
   }
 
-  handleSearchChange(event) {
+  handleSearchChange(event : any) {
     this.setState({
       search: event.target.value
     });
@@ -266,12 +265,12 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
 
   render() {
 
-    const handleSearchChange = (event) => this.handleSearchChange(event)
+    const handleSearchChange = (event : any) => this.handleSearchChange(event)
 
-    const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) => {
+    const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any>  => {
       return this.onStartTask(task, activity);
     }
-    const onStopTask = (task : DataTypes.Task) => {
+    const onStopTask = (task : DataTypes.Task) : Promise<any> => {
       return this.onStopTask(task);
     }
 
@@ -288,7 +287,7 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
             placeholder="Search tasks..."
             onChange={handleSearchChange}
             />
-          { this.props.backend.tasks.filter((task) => {
+          { this.props.backend.tasks.filter((task : DataTypes.Task) => {
             if ( task.is_running ) {
               return true;
             }

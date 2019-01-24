@@ -28,13 +28,12 @@ import type Moment from "moment";
 import type { 
   SettingsProps, 
   SettingsState, 
-  SpecialKey,
-  NormalKey
+  SpecialKey
 } from "./SettingsPage.flow";
 
-const RenderSpecialKey = (key, keyPrefix) => {
-  let label = GetSpecialKeyLabel(key);
-  let icon = GetSpecialKeyIcon(key);
+const RenderSpecialKey = (key : SpecialKey, keyPrefix? : string) => {
+  const label : string = GetSpecialKeyLabel(key);
+  const icon : any = GetSpecialKeyIcon(key);
 
   return <span className="key special" key={`key-${keyPrefix?keyPrefix:""}${key.id}`}>
     <span className="icon">{icon}</span>
@@ -46,29 +45,37 @@ const SpecialKeyPredicate = (query, key) => {
   return `${key.id}.${GetSpecialKeyLabel(key)}`.replace("+", ".").toLowerCase().indexOf(query.toLowerCase()) >= 0;
 };
 
-const ShortcutKeys = (key, special) => {
+const ShortcutKeys = (key : SpecialKey | void | null, special? : boolean) => {
   if ( !key ) {
     return <span>Error Rendering Missing Key!</span>;
   }
 
-  let content = [];
-  // check for combo keys
-  if ( key.id.indexOf("+") > -1 ) {
-    content = key.id.split("+").reduce((result, k, i) => {
-      if ( i > 0 ) {
-        result.push(<span key={`plus-${i}`} className="plus"> + </span>);
-      }
-      result.push(RenderSpecialKey(findSpecialKey(k), key.id));
-      return result;
-    }, []);
-  } else {
-    content = [RenderSpecialKey(key, key.id)];
+  if ( typeof key !== undefined && key != null ) {
+    let content = [];
+    let keyid = key.id;
+    // check for combo keys
+    if ( key.id.indexOf("+") > -1 ) {
+      content = keyid.split("+").reduce((result, k, i) => {
+        if ( i > 0 ) {
+          result.push(<span key={`plus-${i}`} className="plus"> + </span>);
+        }
+        let sk = findSpecialKey(k);
+        if ( sk ) {
+          result.push(RenderSpecialKey(sk, keyid));
+        }
+        return result;
+      }, []);
+    } else {
+      content = [RenderSpecialKey(key, keyid)];
+    }
+
+    return <div key={`key-group-${key.id}`} className={classNames("key-group", { special })}>{content}</div>;
   }
 
-  return <div key={`key-group-${key.id}`} className={classNames("key-group", { special })}>{content}</div>;
+  return [];
 }
 
-const SpecialKeysRenderer = (key, { handleClick, modifiers }) : ItemRenderer => {
+const SpecialKeysRenderer = (key : SpecialKey, { handleClick, modifiers }) : ItemRenderer => {
   if ( !modifiers.matchesPredicate ) {
     return null;
   }
@@ -94,7 +101,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     }
   }
 
-  componentDidMount() {
+  componentDidMount() : void {
     mainProcessAPI("getUserSettings", [
       "visibleToggleShortcutModifier", 
       "visibleToggleShortcutKey",
@@ -107,7 +114,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     });
   }
 
-  handleRegisterVisibleToggleShortcutSet() {
+  handleRegisterVisibleToggleShortcutSet() : Promise<any> {
     return mainProcessAPI(
       "registerVisibleToggleShortcut", 
       this.state.visibleToggleShortcutModifier,
@@ -140,7 +147,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     })
   }
 
-  onVisibleToggleShortcutModifierSelected(key) {
+  onVisibleToggleShortcutModifierSelected(key : SpecialKey) : void {
     if ( key ) {
       this.setState({
         visibleToggleShortcutModifier: key.id
@@ -150,7 +157,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     }
   }
 
-  onVisibleToggleShortcutKeySelected(key) {
+  onVisibleToggleShortcutKeySelected(key : SpecialKey) : void {
     if ( key ) {
       this.setState({
         visibleToggleShortcutKey: key.id
@@ -160,15 +167,15 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     }
   }
 
-  handleQuit() {
+  handleQuit() : void {
     mainProcessAPI("quit");
   }
 
-  handleLogout() {
+  handleLogout() : void {
     mainProcessAPI("logout");
   }
 
-  handleOnTimerStartGoto(where) {
+  handleOnTimerStartGoto(where : string) : void {
     mainProcessAPI("setUserSettings", { "onTimerStartGoto": where})
     .then((result) => {
       console.log(result);
@@ -181,7 +188,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     })
   }
 
-  render() {
+  render() : Node {
     const handleQuit = () => this.handleQuit();
     const handleLogout = () => this.handleLogout();
     const handleOnTimerStartGotoTimesheet = () => this.handleOnTimerStartGoto('timesheet');
@@ -213,10 +220,10 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
 
     return <div className="page settings">
       <div className="page-title">Settings</div>
-      <div className="page-content">
+      <div className="page-content padded">
         <ControlGroup fill>
-          <Button icon="power" text="Quit" intent={Intent.DANGER} onClick={handleQuit} />
-          <Button icon="log-out" text="Log Out" onClick={handleLogout} />
+          <Button fill icon="power" text="Quit App" intent={Intent.DANGER} onClick={handleQuit} />
+          <Button fill icon="log-out" text="Log Out" onClick={handleLogout} />
         </ControlGroup>
         <FormGroup
             className="ctrl-field"
@@ -273,10 +280,12 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
           >
             <ButtonGroup fill>
               <Button 
+                fill
                 text="Go to timesheet" 
                 onClick={handleOnTimerStartGotoTimesheet}
                 active={this.state.onTimerStartGoto === 'timesheet'} />
               <Button 
+                fill
                 text="Stay in tasks" 
                 onClick={handleOnTimerStartGotoTasks}
                 active={this.state.onTimerStartGoto === 'tasks'} />
@@ -288,7 +297,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
 }
 
 
-export function SettingsPage(props: DataTypes.PageProps) {
+export function SettingsPage(props: DataTypes.PageProps) : Node{
   return <BackendConsumer>
     {backend => <Settings backend={backend} {...props} />}
   </BackendConsumer>

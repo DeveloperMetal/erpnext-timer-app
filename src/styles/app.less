@@ -80,7 +80,7 @@ html, body, #root {
         flex: 1 1 auto;
         display: flex;
         flex-direction: row;
-        margin-left: 5px;
+        position: relative;
     
         & > * {
             flex: 1 1 auto;
@@ -175,30 +175,39 @@ html, body, #root {
 
         .page {
             flex: 1 1 auto;
-            padding: 1em 0 0 0;
+            padding: 0;
             margin: 0;
             background-color: #f1f1f1;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
 
             .page-title {
-                font-size: 1.5em;
+                font-size: 1.4em;
                 font-weight: bolder;
                 padding: 0.3em;
                 background: white;
                 text-align: center;
                 color: #f98766;
-                margin: -0.7em -1.5em 0 -1.5em;
+                margin: 0;
                 z-index: 2;
                 box-shadow: 0 2px 6px #d8d8d8;
             }
 
             .page-content {
-                padding: 1em 5px 0 5px;
+                padding: 0;
                 z-index: 1;
                 overflow-y: auto;
                 flex: 1 1 auto;
+
+                &.padded {
+                    padding: 15px;
+                }
             }
 
             .page-actions {
@@ -214,7 +223,7 @@ html, body, #root {
             }
 
             &.timeline {
-                padding: 1em 0 0;
+                padding: 0;
                 display: flex;
                 flex-direction: column;
 
