@@ -42,7 +42,10 @@ export const SPECIALKEYS: Array<SpecialKey> = [
     }
   }, {
     id: "Alt",
-    label: false,
+    label: {
+      darwin: "OPTION",
+      default: false
+    },
     icon: {
       darwin: <Icon icon="key-option" />,
       default: <span>ALT</span>
@@ -57,7 +60,7 @@ export const SPECIALKEYS: Array<SpecialKey> = [
   }, {
     id: "Shift",
     label: {
-      default: "Shift"
+      default: "SHIFT"
     },
     icon: {
       default: <Icon icon="key-shift" />
@@ -250,13 +253,13 @@ export function GetSpecialKeyLabel(key : SpecialKey) : string {
     return "";
   } else if ( typeof key.label === "string" ) {
     return key.label;
-  } else if ( key.label && typeof key.label.constructor === "object" ) {
+  } else if ( key.label && typeof key.label === "object" ) {
     let label : any = key.label;
 
     if ( label.hasOwnProperty(process.platform) ) {
-      return Reflect.get(label, process.platform);
+      return Reflect.get(label, process.platform) || "";
     } else if ( label.hasOwnProperty("default") ) {
-      return label.default;
+      return label.default || "";
     }
   }
 
@@ -267,9 +270,9 @@ export function GetSpecialKeyIcon (key : SpecialKey) : any {
   if ( key.hasOwnProperty("icon") && typeof key.icon !== undefined ) {
     let icon : any = key.icon;
     if ( icon.hasOwnProperty(process.platform) ) {
-      return Reflect.get(icon, process.platform);
+      return Reflect.get(icon, process.platform) || [];
     } else if ( icon.hasOwnProperty("default") ) {
-      return Reflect.get(icon, "default");
+      return Reflect.get(icon, "default") || [];
     }
   }
 
