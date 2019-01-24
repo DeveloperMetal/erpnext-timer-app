@@ -1,10 +1,11 @@
 // @flow
 
 import { ipcRenderer } from 'electron';
+import { mainProcessAPI } from "../utils";
 
 // Third party
 import React from "react";
-import { Card, Button, Tag, MenuItem, Spinner } from "@blueprintjs/core";
+import { InputGroup, Card, Button, Tag, MenuItem, Spinner } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import  classNames from 'classnames';
 import moment from "moment";
@@ -217,21 +218,37 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     super(props);
 
     this.state = {
-      tasks: []
+      tasks: [],
+      search: "",
+      onTimerStartGoto: 'timesheet'
     }
+
+    this.searchRef = null;
   }
 
   componentDidMount() {
     const { backend } = this.props;
 
     backend.actions.listTasks();
+
+    mainProcessAPI("getUserSettings", [
+      "onTimerStartGoto"
+    ])
+    .then((result) => {
+      this.setState({
+        ...result
+      });
+    });
   }
+
 
   onStartTask(task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any> {
     const { backend } = this.props;
 
     return backend.actions.startTask(task, activity).then(() => {
-      this.props.nav("timesheet");
+      if ( this.state.onTimerStartGoto === 'timesheet' ) {
+        this.props.nav("timesheet");
+      }
     })
   }
 
@@ -241,7 +258,15 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     return backend.actions.stopTask(task);
   }
 
+  handleSearchChange(event) {
+    this.setState({
+      search: event.target.value
+    });
+  }
+
   render() {
+
+    const handleSearchChange = (event) => this.handleSearchChange(event)
 
     const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) => {
       return this.onStartTask(task, activity);
@@ -254,7 +279,26 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       <div className="page-title">Tasks</div>
       <div className="page-content">
         <div className="task-list">
-          { this.props.backend.tasks.map((t, k) => <TaskListItem 
+          <InputGroup 
+            fill
+            autoFocus
+            className="ctrl-field"
+            leftIcon="search" 
+            type="search"
+            placeholder="Search tasks..."
+            onChange={handleSearchChange}
+            />
+          { this.props.backend.tasks.filter((task) => {
+            if ( task.is_running ) {
+              return true;
+            }
+
+            if ( this.state.search ) {
+              return `${task.project_label || ''}.${task.parent_label || ''}.${task.label || ''}.${task.description}`.toLowerCase().indexOf(this.state.search.toLowerCase()) > -1;
+            }
+
+            return true;
+          }).map((t, k) => <TaskListItem 
               key={`task-${k}`} 
               task={t}
               activities={this.props.backend.activities || []}

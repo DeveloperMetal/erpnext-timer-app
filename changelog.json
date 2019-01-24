@@ -1,13 +1,29 @@
 [
     {
+        "version": "1.1.0",
+        "date": "2019-01-23",
+        "message": "QoF update. It was all about the settings baby!",
+        "added": [
+            "Settings Page.",
+            "Quit button in settings page.",
+            "Logout button in settings page.",
+            "Global visibility shortcut customization with mac, pc, linux detection.",
+            "You can now define what happens when a timer starts, either navigate to timesheet or stay in tasks.",
+            "Tasks has a new search field. For now it is a simple character match search. Will add fuzzy search in a future update.",
+            "Added user toast message. Right now only used on settings to inform user when shortcut keys were successfully set on the OS.",
+        ], 
+        "changed": [
+            "How settings are stored and managed internally",
+            "Expanded main process api to handle more of the system configurations outside of the app rendering."
+        ]
+    },    {
         "version": "1.0.26",
         "date": "2019-01-22",
         "message": "Small mac fix.",
         "changed": [
             "Fix: Syntax error on mac builds due to electron versions."
         ]
-    },
-    {
+    }, {
         "version": "1.0.25",
         "date": "2019-01-17",
         "message": "On this update, focus on bug fixes and small UI updates to make timeline more usable",

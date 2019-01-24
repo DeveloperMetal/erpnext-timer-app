@@ -17,6 +17,7 @@ import { TrayState, TrayAnimation } from './trayAnimations';
 import changeLog from '../changelog.json';
 import moment from "moment";
 import momentDurationFormatSetup from "moment-duration-format";
+import userSettings from "./userSettings";
 momentDurationFormatSetup(moment);
 
 const KEYTAR_SERVICE = 'com.bloomstack.timerapp';
@@ -93,6 +94,31 @@ init.then(() => {
     trayState.addRunningAnimation(new TrayAnimation(animationFrames));
     trayState.setIdle(); // start with stopped timer icon
 
+    function unregisterVisibleToggleShortcut() {
+      console.log("unregister visiblity toggle shortcut... ", userSettings.visibleToggleShortcut);
+      if ( globalShortcut.isRegistered(userSettings.visibleToggleShortcut) ) {
+        globalShortcut.unregister(userSettings.visibleToggleShortcut);
+      }
+    }
+
+    function registerVisibleToggleShortcut() {
+      console.log("Register visibility shortcut: ", userSettings.visibleToggleShortcut);
+      return globalShortcut.register(userSettings.visibleToggleShortcut, () => {
+        let visible = mainWindow.isVisible();
+
+        if ( !visible ) {
+          positionWindow(mainWindow, tray);
+          mainWindow.show();
+        } else {
+          if ( isMouseOnAppDisplay(mainWindow) ) {
+            mainWindow.hide();
+          } else {
+            positionWindow(mainWindow, tray);
+          }
+        }
+      });
+    }
+
     mainWindow.webContents.on("did-fail-load", (e) => {
       log.error("Error loading app: ", e);
     });
@@ -127,20 +153,7 @@ init.then(() => {
       positionWindow(mainWindow, tray);
       mainWindow.show();
 
-      const ret = globalShortcut.register('CommandOrControl+Alt+T', () => {
-        let visible = mainWindow.isVisible();
-
-        if ( !visible ) {
-          positionWindow(mainWindow, tray);
-          mainWindow.show();
-        } else {
-          if ( isMouseOnAppDisplay(mainWindow) ) {
-            mainWindow.hide();
-          } else {
-            positionWindow(mainWindow, tray);
-          }
-        }
-      });
+      registerVisibleToggleShortcut();
 
       function handleUrlNavigation(event, url) {
         let urlParser = new URL(url);
@@ -271,6 +284,64 @@ init.then(() => {
         }
       })
     }
+
+    ipcMain.on('api:quit', (event) => {
+      app.isQuiting = true;
+      app.quit();
+    });
+
+    ipcMain.on('api:logout', (event) => {
+      mainWindow.webContents.send('user-logout');
+    });
+
+    ipcMain.on('api:getUserSettings', (event, request) => {
+      try {
+        if ( request.args.length < 1 ) {
+          event.sender.send(request.error_channel, { error: "At least one argument is required."})
+          return;
+        }
+
+        let response = {};
+        request.args[0].forEach((field) => {
+          if ( field in userSettings ) {
+            response[field] = userSettings[field];
+          }
+        });
+
+        event.sender.send(request.response_channel, response);
+      } catch (err) {
+        event.sender.send(request.error_channel, err.toString());
+      }
+    });
+
+    ipcMain.on('api:setUserSettings', (event, request) => {
+      try {
+        if ( request.args.length < 1 ) {
+          event.sender.send(request.error_channel, { error: "At least one argument is required."})
+          return;
+        }
+
+        Object.keys(request.args[0]).forEach((key) => {
+          userSettings[key] = request.args[0][key];
+        })
+
+        event.sender.send(request.response_channel, true);
+      } catch (err) {
+        event.sender.send(request.error_channel, err.toString());
+      }
+    });
+
+    ipcMain.on('api:registerVisibleToggleShortcut', (event, request) => {
+      try {
+        unregisterVisibleToggleShortcut();
+        userSettings.visibleToggleShortcutModifier = request.args[0];
+        userSettings.visibleToggleShortcutKey = request.args[1];
+        let result = registerVisibleToggleShortcut();
+        event.sender.send(request.response_channel, result);
+      } catch (err) {
+        event.sender.send(request.error_channel, err.toString());
+      }
+    });
 
     ipcMain.on('api:setServerUrl', (event, request) => {
       serverUrl = request.args[0];

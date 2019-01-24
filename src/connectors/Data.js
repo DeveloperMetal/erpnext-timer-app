@@ -81,7 +81,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       day: moment(),
       timeline: [],
       tasks: [],
-      errors: [],
+      userMessages: [],
       activities: [],
       projects: [],
       actions: {
@@ -92,7 +92,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "listTasks",
           "startTask",
           "stopTask",
-          "dismissError",
+          "dismissMessage",
+          "userMessage",
           "listDayTimeline",
           "updateActiveTimelineBlock",
           "updateTimelineBlock",
@@ -105,10 +106,10 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }
   }
 
-  dismissError(err : ConnectorError) {
+  dismissMessage(msg : any) {
     this.setState(prevState => {
       return {
-        errors: prevState.errors.filter(e => e !== err)
+        userMessages: prevState.userMessages.filter(e => e !== msg)
       }
     });
   }
@@ -128,10 +129,20 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     }
 
     this.setState((prevState : DataTypes.State) => {
-      return { errors: [...prevState.errors, err] };
+      return { userMessages: [...prevState.userMessages, err] };
     }, () => {
       if ( typeof done === "function" ) {
         done(err);
+      }
+    });
+  }
+
+  userMessage(message, done) {
+    this.setState((prevState : DataTypes.State) => {
+      return { userMessages: [...prevState.userMessages, message] };
+    }, () => {
+      if ( typeof done === "function" ) {
+        done();
       }
     });
   }

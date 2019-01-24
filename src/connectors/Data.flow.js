@@ -42,7 +42,7 @@ export type State = {
   day : Moment,
   actions : any,
   timeline : TimelineItem[],
-  errors: any[],
+  userMessages: any[],
   tasks: Task[],
   activities: Activity[],
   projects: Project[]

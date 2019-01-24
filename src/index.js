@@ -18,6 +18,7 @@ RenderApp(App);
 if ( module.hot ) {
   module.hot.accept("./components/App", () => { 
     let errorBox = document.querySelector('.react-hot-loader-error-overlay');
+    console.log("Cleanup...", errorBox);
     if ( errorBox ) {
       errorBox.parentNode.removeChild(errorBox);
     }

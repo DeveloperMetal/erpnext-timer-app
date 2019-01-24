@@ -87,22 +87,22 @@ export const SPECIALKEYS: Array<SpecialKey> = [
     platforms: PLATFORMS.PC
   }, {
     id: "Command+Control+Alt",
-    platform: PLATFORMS.Mac
+    platforms: PLATFORMS.Mac
   }, {
     id: "Command+Control+Shift",
-    platform: PLATFORMS.Mac
+    platforms: PLATFORMS.Mac
   }, {
     id: "Command+Alt+Shift",
-    platform: PLATFORMS.Mac
+    platforms: PLATFORMS.Mac
   }, {
     id: "Super+Control+Alt",
-    platform: PLATFORMS.PC
+    platforms: PLATFORMS.PC
   }, {
     id: "Super+Control+Shift",
-    platform: PLATFORMS.PC
+    platforms: PLATFORMS.PC
   }, {
     id: "Super+Alt+Shift",
-    platform: PLATFORMS.PC
+    platforms: PLATFORMS.PC
   }
 ]
 
@@ -131,10 +131,15 @@ export function GenKeys(
   let result: Array<NormalKey> = [];
   for (let i = start; i <= end; i++) {
     let id = idFn(i);
-    result.push({
-      id,
-      icon: iconFn(id)
-    });
+    let icon = null;
+    if ( iconFn ) {
+      icon = iconFn(id);
+    }
+    let kdef = { id };
+    if ( icon ) {
+      kdef.icon = { default: icon };
+    }
+    result.push(kdef);
   }
 
   return result
@@ -142,7 +147,7 @@ export function GenKeys(
 
 export const KEYS = GenKeysFromCharCode(48, 57) // 0 to 9
   .concat(GenKeysFromCharCode("A".charCodeAt(0), "Z".charCodeAt(0))) // A to Z
-  .concat(GenKeys(1, 12, (idx) => `F${idx}`, (key) => <span>{key}</span>)) // F1 to F12
+  .concat(GenKeys(1, 12, (idx) => `F${idx}`)) // F1 to F12
   .concat([
     {
       id: "space",
@@ -168,66 +173,66 @@ export const KEYS = GenKeysFromCharCode(48, 57) // 0 to 9
       id: "/"
     }, {
       id: "Plus",
-      icon: <Icon icon="plus" />
+      icon: { default: <Icon icon="plus" /> }
     }, {
       id: "Tab",
-      icon: <Icon icon="key-tab" />
+      icon: { default: <Icon icon="key-tab" /> }
     }, {
       id: "VolumeUp",
       label: false,
-      icon: <Icon icon="volume-up" />
+      icon: { default: <Icon icon="volume-up" /> }
     }, {
       id: "VolumeDown",
       label: false,
-      icon: <Icon icon="volume-down" />
+      icon: { default: <Icon icon="volume-down" /> }
     }, {
       id: "VolumeMute",
       label: false,
-      icon: <Icon icon="volume-off" />
+      icon: { default: <Icon icon="volume-off" /> }
     }, {
       id: "PageUp",
       label: "PgUp",
-      icon: <Icon icon="double-chevron-up" />
+      icon: { default: <Icon icon="double-chevron-up" /> }
     }, {
       id: "PageDown",
       label: "PgDn",
-      icon: <Icon icon="double-chevron-down" />
+      icon: { default: <Icon icon="double-chevron-down" /> }
     }, {
       id: "Escape",
       label: "Esc",
-      icon: <Icon icon="key-escape" />
+      icon: { default: <Icon icon="key-escape" /> }
     }, {
       id: "Home"
     }, {
       id: "End"
     }, {
       id: "Return",
-      icon: <Icon icon="key-enter" />
+      icon: { default: <Icon icon="key-enter" /> }
     }, {
       id: "Insert",
-      icon: <Icon icon="insert" />
+      icon: { default: <Icon icon="insert" /> }
     }, {
       id: "Delete",
-      icon: <Icon icon="key-delete" />
+      icon: { default: <Icon icon="key-delete" /> }
     }, {
       id: "Backspace",
-      icon: <Icon icon="key-backspace" />
+      icon: { default: <Icon icon="key-backspace" /> }
     }, {
       id: "MediaNextTrack",
       label: false,
-      icon: <Icon icon="step-forward" />
+      icon: { default: <Icon icon="step-forward" /> }
     }, {
       id: "MediaPreviousTrack",
       label: false,
-      icon: <Icon icon="step-backward" />
+      icon: { default: <Icon icon="step-backward" /> }
     }, {
       id: "MediaStop",
       label: false,
-      icon: <Icon icon="stop" />
+      icon: { default: <Icon icon="stop" /> }
     }, {
       id: "MediaPlayPause",
       label: false,
-      icon: <span><Icon icon="play" /><Icon icon="pause" /></span>
+      icon: { default: <span><Icon icon="play" /><Icon icon="pause" /></span> }
     }
   ]);
 
@@ -242,6 +247,8 @@ export function findKey(id) {
 export const GetSpecialKeyLabel = (key) => {
   if ( key.label === false ) {
     return "";
+  } else if ( typeof key.label === "string" ) {
+    return key.label;
   } else if ( key.label ) {
     if ( process.platform in key.label ) {
       return Reflect.get(key.label, process.platform);

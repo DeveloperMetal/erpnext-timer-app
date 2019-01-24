@@ -6,17 +6,19 @@ import {
   SPECIALKEYS, 
   KEYS, 
   findSpecialKey, 
+  findKey,
   GetSpecialKeyIcon, 
   GetSpecialKeyLabel 
 } from "./SpecialKeys";
 
-import { ButtonGroup, Button, Popover, Menu, MenuItem, Intent } from "@blueprintjs/core";
+import { ButtonGroup, Button, ControlGroup, FormGroup, MenuItem, Tooltip, Icon, Intent, Position, Alignment } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
-
+import classNames from "classnames";
 import moment from "moment"
+import { mainProcessAPI } from "../utils";
 
 // Components
-import { BackendConsumer } from "../connectors/Data";
+import { BackendConsumer, ConnectorError } from "../connectors/Data";
 
 // flow types
 import type { ItemRenderer, ItemPredicate } from "@blueprintjs/core";
@@ -30,11 +32,11 @@ import type {
   NormalKey
 } from "./SettingsPage.flow";
 
-const RenderSpecialKey = (key) => {
+const RenderSpecialKey = (key, keyPrefix) => {
   let label = GetSpecialKeyLabel(key);
   let icon = GetSpecialKeyIcon(key);
 
-  return <span className="key special">
+  return <span className="key special" key={`key-${keyPrefix?keyPrefix:""}${key.id}`}>
     <span className="icon">{icon}</span>
     <span className="label">{label}</span>
   </span>;
@@ -44,31 +46,38 @@ const SpecialKeyPredicate = (query, key) => {
   return `${key.id}.${GetSpecialKeyLabel(key)}`.replace("+", ".").toLowerCase().indexOf(query.toLowerCase()) >= 0;
 };
 
-const SpecialKeysRenderer = (key, { handleClick, modifiers }) : ItemRenderer => {
-  if ( !modifiers.matchesPredicate ) {
-    return null;
+const ShortcutKeys = (key, special) => {
+  if ( !key ) {
+    return <span>Error Rendering Missing Key!</span>;
   }
 
-  let content = "";
-
+  let content = [];
   // check for combo keys
   if ( key.id.indexOf("+") > -1 ) {
-    content = key.id.split("+").reduce((result, key, i) => {
+    content = key.id.split("+").reduce((result, k, i) => {
       if ( i > 0 ) {
-        result.push(<span> + </span>);
+        result.push(<span key={`plus-${i}`} className="plus"> + </span>);
       }
-      result.push(RenderSpecialKey(findSpecialKey(key)));
+      result.push(RenderSpecialKey(findSpecialKey(k), key.id));
       return result;
     }, []);
   } else {
-    content = [RenderSpecialKey(key)];
+    content = [RenderSpecialKey(key, key.id)];
+  }
+
+  return <div key={`key-group-${key.id}`} className={classNames("key-group", { special })}>{content}</div>;
+}
+
+const SpecialKeysRenderer = (key, { handleClick, modifiers }) : ItemRenderer => {
+  if ( !modifiers.matchesPredicate ) {
+    return null;
   }
 
   return <MenuItem
     active={modifiers.active}
     key={key.id}
     onClick={handleClick}
-    text={content}
+    text={ShortcutKeys(key)}
   />
 }
 
@@ -77,40 +86,202 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     super(props);
 
     this.state = {
-      modifier: null
+      visibleToggleShortcutModifier: null,
+      visibleToggleShortcutKey: null,
+      validVisibilityShortcut: null,
+      validVisibilityShortcutTooltip: "",
+      onTimerStartGoto: ""
     }
   }
 
-  onModifiersSelected(key) {
-    console.log(key);
-    this.setState({
-      modifier: key.id
+  componentDidMount() {
+    mainProcessAPI("getUserSettings", [
+      "visibleToggleShortcutModifier", 
+      "visibleToggleShortcutKey",
+      "onTimerStartGoto"
+    ])
+    .then((result) => {
+      this.setState({
+        ...result
+      });
+    });
+  }
+
+  handleRegisterVisibleToggleShortcutSet() {
+    return mainProcessAPI(
+      "registerVisibleToggleShortcut", 
+      this.state.visibleToggleShortcutModifier,
+      this.state.visibleToggleShortcutKey
+    )
+    .then((result) => {
+      if ( !result ) {
+        this.props.backend.actions.throwError(new ConnectorError("Unable to set shortcut"));
+      } else {
+        this.props.backend.actions.userMessage({
+          message: "Global shortcut set!",
+          intent: Intent.SUCCESS,
+          icon: "tick-circle",
+          timeout: 2000
+        })
+      }
+
+      this.setState({
+        validVisibilityShortcut: result,
+        validVisibilityShortcutTooltip: result?"Shortcut Set":"Unable to set shortcut"
+      })
+    })
+    .catch((err) => {
+      this.props.backend.actions.throwError(new ConnectorError(err));
+      console.error(err);
+      this.setState({
+        validVisibilityShortcut: false,
+        validVisibilityShortcutTooltip: err
+      })
+    })
+  }
+
+  onVisibleToggleShortcutModifierSelected(key) {
+    if ( key ) {
+      this.setState({
+        visibleToggleShortcutModifier: key.id
+      }, () => {
+        this.handleRegisterVisibleToggleShortcutSet();
+      })
+    }
+  }
+
+  onVisibleToggleShortcutKeySelected(key) {
+    if ( key ) {
+      this.setState({
+        visibleToggleShortcutKey: key.id
+      }, () => {
+        this.handleRegisterVisibleToggleShortcutSet();
+      });
+    }
+  }
+
+  handleQuit() {
+    mainProcessAPI("quit");
+  }
+
+  handleLogout() {
+    mainProcessAPI("logout");
+  }
+
+  handleOnTimerStartGoto(where) {
+    mainProcessAPI("setUserSettings", { "onTimerStartGoto": where})
+    .then((result) => {
+      console.log(result);
+      this.setState({
+        onTimerStartGoto: where
+      });
+    })
+    .catch((err) => {
+      console.log(err);
     })
   }
 
   render() {
-    const { modifier } = this.state;
-    const specialKeyItems = SPECIALKEYS.filter((key) => key.platforms?process.platform in key.platforms:true);
-    const onModifiersSelected = (key) => this.onModifiersSelected(key);
-    const selectedModifier = modifier?RenderSpecialKey(findSpecialKey(modifier)):"Select a modifier";
+    const handleQuit = () => this.handleQuit();
+    const handleLogout = () => this.handleLogout();
+    const handleOnTimerStartGotoTimesheet = () => this.handleOnTimerStartGoto('timesheet');
+    const handleOnTimerStartGotoTasks = () => this.handleOnTimerStartGoto('tasks');
+    const { 
+      visibleToggleShortcutModifier,
+      visibleToggleShortcutKey,
+      validVisibilityShortcut,
+      validVisibilityShortcutTooltip
+     } = this.state;
+    const commonPopoverProps = {
+      portalClassName: "bp3-dark ctrl-popover",
+      className: "ctrl-flex ctrl-flex-row",
+      targetClassName: "ctrl-flex-auto",
+      lazy: true,
+      usePortal: true
+    };
+
+    const specialKeyItems = SPECIALKEYS.filter(
+      (key) => key.platforms?key.platforms.indexOf(process.platform) > -1:true
+    );
+    const normalKeyItems = KEYS.slice(0);
+
+    const onVisibleToggleShortcutModifierSelected = (key) => this.onVisibleToggleShortcutModifierSelected(key);
+    const onVisibleToggleShortcutKeySelected = (key) => this.onVisibleToggleShortcutKeySelected(key);
+    
+    const visibleToggleShortcutModifierSelected = visibleToggleShortcutModifier?ShortcutKeys(findSpecialKey(visibleToggleShortcutModifier), true):"Select a modifier";
+    const visibleToggleShortcutKeySelected = visibleToggleShortcutKey?ShortcutKeys(findKey(visibleToggleShortcutKey), false):"Select a key";
 
     return <div className="page settings">
       <div className="page-title">Settings</div>
-      Shortcuts:
-      <div className="row">
-        <div className="col-3-sm">
-          Global Toggle: 
-        </div>
-        <div className="col-9-sm">
-          <Select
-            items={specialKeyItems}
-            noResults={<MenuItem disabled={true} text="Select a modifier"/>}
-            itemRenderer={SpecialKeysRenderer}
-            itemPredicate={SpecialKeyPredicate}
-            onItemSelect={onModifiersSelected}>
-            <Button text={selectedModifier} rightIcon="double-caret-vertical" />
-          </Select>
-        </div>
+      <div className="page-content">
+        <ControlGroup fill>
+          <Button icon="power" text="Quit" intent={Intent.DANGER} onClick={handleQuit} />
+          <Button icon="log-out" text="Log Out" onClick={handleLogout} />
+        </ControlGroup>
+        <FormGroup
+            className="ctrl-field"
+            label="Global Toggle"
+            labelFor="global-shortcut-toggle"
+            labelInfo="(required)"
+            fill
+          >
+            <ControlGroup 
+              fill
+              className="ctrl-flex-center-items"
+            >
+              <Select
+                popoverProps={commonPopoverProps}
+                items={specialKeyItems}
+                noResults={<MenuItem disabled={true} text="Select a modifier"/>}
+                itemRenderer={SpecialKeysRenderer}
+                itemPredicate={SpecialKeyPredicate}
+                onItemSelect={onVisibleToggleShortcutModifierSelected}>
+                <Button fill alignText={Alignment.LEFT} text={visibleToggleShortcutModifierSelected} rightIcon="double-caret-vertical" />
+              </Select>
+              <div className="bp3-fixed"><div className="ctrl-std">+</div></div>
+              <Select
+                popoverProps={commonPopoverProps}
+                items={normalKeyItems}
+                noResults={<MenuItem disabled={true} text="Select a key"/>}
+                itemRenderer={SpecialKeysRenderer}
+                itemPredicate={SpecialKeyPredicate}
+                onItemSelect={onVisibleToggleShortcutKeySelected}>
+                <Button fill alignText={Alignment.LEFT}  text={visibleToggleShortcutKeySelected} rightIcon="double-caret-vertical" />
+              </Select>
+              { validVisibilityShortcut != null && (
+                <Tooltip 
+                  className="bp3-fixed"
+                  disabled={!validVisibilityShortcutTooltip} 
+                  content={validVisibilityShortcutTooltip} 
+                  position={Position.LEFT}
+                  intent={validVisibilityShortcut?Intent.SUCCESS:Intent.DANGER}
+                >
+                  <Icon
+                    className="ctrl-std"
+                    icon={validVisibilityShortcut?"tick-circle":"error"}
+                    intent={validVisibilityShortcut?Intent.SUCCESS:Intent.DANGER}
+                  />
+                </Tooltip>
+              )}
+            </ControlGroup>
+          </FormGroup>
+          <FormGroup
+            className="ctrl-field"
+            label="When timer starts display"
+            labelFor="when-timer-starts-display"
+            fill
+          >
+            <ButtonGroup fill>
+              <Button 
+                text="Go to timesheet" 
+                onClick={handleOnTimerStartGotoTimesheet}
+                active={this.state.onTimerStartGoto === 'timesheet'} />
+              <Button 
+                text="Stay in tasks" 
+                onClick={handleOnTimerStartGotoTasks}
+                active={this.state.onTimerStartGoto === 'tasks'} />
+            </ButtonGroup>
+          </FormGroup>
       </div>
     </div>
   }

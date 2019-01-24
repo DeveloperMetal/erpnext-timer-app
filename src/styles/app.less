@@ -521,10 +521,87 @@ html, body, #root {
     }
 }
 
-.key {
-    border: 1px solid grey;
-    border-radius: 3px;
-    padding: 2px 5px;
+.key-group {
     margin: 0 2px;
-    font-size: .8em;
+    display: flex;
+    flex-direction: row;
+    white-space: nowrap;
+    align-items: center;
+
+    .plus {
+        margin: 0 5px;
+    }
+}
+
+.key {
+    padding: 2px 5px 0;
+    margin: 0;
+    height: 18px;
+    margin-bottom: 6px;
+    font-size: .75em;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+
+    color: rgb(126, 126, 126);
+    box-shadow:
+        0px 1px 0px rgb(250, 250, 250),
+        0px 2px 0px rgb(250, 250, 250),
+        0px 3px 0px rgb(250, 250, 250),
+        0px 4px 0px 1px rgb(168, 168, 168),
+        0px 4px 0px 2px rgb(105, 105, 105);
+    background: rgb(249,249,249);
+    background: linear-gradient(to bottom,  rgb(249,249,249) 0%,rgb(239,239,239) 95%,rgb(226,226,226) 100%);
+    border-radius: 3px;
+    box-sizing: border-box;
+
+    .icon {
+        flex: 0 0 auto;
+        margin-right: 7px;
+        align-self: center;
+    }
+
+    .label {
+        flex: 0 0 auto;
+        align-self: center;
+    }
+}
+
+.ctrl-flex {
+    display: flex;
+
+    &.ctrl-flex-row {
+        flex-direction: row;
+    }
+    &.ctrl-flex-col {
+        flex-direction: row;
+    }
+
+    .ctrl-flex-auto {
+        flex: 1 1 auto;
+    }
+
+    .ctrl-flex-static {
+        flex: 0 0 auto;
+    }
+}
+
+.ctrl-flex-center-items {
+    align-items: center;
+}
+
+.ctrl-field {
+    margin-top: 1em;
+}
+
+.ctrl-std {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.ctrl-popover {
+    .bp3-menu {
+        max-height: 300px;
+        overflow: auto;
+    }
 }

@@ -11,7 +11,8 @@ const nwbExpress = require('nwb/express')
 app.use(
   nwbExpress(express, {
     reload: true,
-    entry: './src/index.js'
+    entry: './src/index.js',
+    //hmre: false
   })
 )
 

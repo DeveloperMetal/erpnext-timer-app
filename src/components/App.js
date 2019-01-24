@@ -128,12 +128,12 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
           return <Toaster 
               position={Position.TOP}
             >
-              { backend.errors.map(err => <Toast 
-                  {...err}
-                  key={err.message}
-                  message={err.message}
+              { backend.userMessages.map(msg => <Toast 
+                  {...msg}
+                  key={msg.message}
+                  message={msg.message}
                   onDismiss={() => {
-                    backend.actions.dismissError(err)
+                    backend.actions.dismissMessage(msg)
                   }}
                 />
               ) }
