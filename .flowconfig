@@ -5,6 +5,7 @@
 .*/node_modules/bloom-daytime-slices*
 .*/node_modules/module-deps/*
 .*/node_modules/bloom-nav-column/node_modules/*
+.*/node_modules/@emotion*
 
 [include]
 ./src

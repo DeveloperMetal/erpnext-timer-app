@@ -20,7 +20,6 @@ if ( document ) {
         });
 
         document.body.addEventListener("track-extra", e => {
-            console.log("Sending error to sentry...", e.detail);
             Sentry.configureScope((scope) => {
                 Object.keys(e.detail).forEach(k => {
                     scope.setExtra(k, e.detail[k]);
