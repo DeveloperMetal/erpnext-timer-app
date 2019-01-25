@@ -349,6 +349,8 @@ html, body, #root {
 
             .task-info {
                 flex: 1 1 auto;
+                overflow: overlay;
+
                 .subject {
                     font-size: 1.2em;
                     font-weight: bolder;
@@ -613,4 +615,18 @@ html, body, #root {
         max-height: 300px;
         overflow: auto;
     }
+}
+
+.bp3-spinner {
+    overflow: hidden;
+}
+
+.smallspinner {
+    display: inline-block;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    margin-left: 7px;
+    transform: translateY(-50%);
+    z-index: 1;
 }

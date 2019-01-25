@@ -5,7 +5,7 @@ import { mainProcessAPI } from "../utils";
 
 // Third party
 import React from "react";
-import { InputGroup, Card, Button, Tag, MenuItem, Spinner } from "@blueprintjs/core";
+import { InputGroup, Card, Button, Tag, MenuItem, Intent, Spinner } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import  classNames from 'classnames';
 import moment from "moment";
@@ -23,7 +23,7 @@ import * as ReactTypes from "react";
 
 // Components
 import { BackendConsumer } from "../connectors/Data";
-import { makeCancelable } from "../utils";
+import { makeCancelable, throttle, decodeHTML } from "../utils";
 
 const ActivityPredicate = (query, activity) => {
   return activity.label.toLowerCase().indexOf(query.toLowerCase()) >= 0;
@@ -41,7 +41,7 @@ const ActivityRenderer = (activity, { handleClick, modifiers }) => {
   />
 }
 
-export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskListItemState> {
+export class TaskListItem extends React.Component<TaskListItemProps, TaskListItemState> {
 
   timerId : ?IntervalID;
   playPromise : ?any;
@@ -55,6 +55,10 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
       waiting: false
     }
     this.timerId = null; 
+  }
+
+  shouldComponentUpdate(newProps) {
+    return this.props.to_time != newProps.to_time || this.props.waiting != newProps.waiting;
   }
 
   setupTimer() {
@@ -165,13 +169,13 @@ export class TaskListItem extends React.PureComponent<TaskListItemProps, TaskLis
           is_running: task.is_running 
         }) } >
       <div className="related">
-        <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={task.project_label} /> )}</div>
-        <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={task.parent_label} /> )}</div>
+        <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={decodeHTML(task.project_label)} /> )}</div>
+        <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={decodeHTML(task.parent_label)} /> )}</div>
       </div>
       <div className="task-content">
         <div className="task-info">
-          <div className="subject">{task.label}</div>
-          <div className="description">{description.substring(0, 140)}</div>
+          <div className="subject">{decodeHTML(task.label)}</div>
+          <div className="description">{decodeHTML(description.substring(0, 140))}</div>
           <div className="elapsed-time">Running Time: <span className="measure">{total_time}</span></div>
         </div>
         <div className="actions">
@@ -221,23 +225,33 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     this.state = {
       tasks: [],
       search: "",
-      onTimerStartGoto: 'timesheet'
+      onTimerStartGoto: 'timesheet',
+      filteredTasks: [],
+      update: false
     }
   }
 
   componentDidMount() {
     const { backend } = this.props;
 
-    backend.actions.listTasks();
-
-    mainProcessAPI("getUserSettings", [
-      "onTimerStartGoto"
-    ])
+    backend.actions.listTasks()
+    .then(() => {
+      return mainProcessAPI("getUserSettings", ["onTimerStartGoto"])
+    })
     .then((result) => {
       this.setState({
         ...result
+      }, () => {
+        this.updateSearch(this.state.search);
       });
     });
+  }
+
+  componentWillUnmount() {
+    if ( this.search ) {
+      this.search.stop(false);
+      this.search = null;
+    }
   }
 
 
@@ -257,9 +271,72 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     return backend.actions.stopTask(task);
   }
 
+  *throttledSearch(filter) {
+    if ( !filter ) { filter = "" }
+
+    const searchResults = [];
+    let match : boolean;
+    let nomatches = 0;
+    for(let task of this.props.backend.tasks) {
+      match = false;
+      if ( task.is_running ) {
+        match = true;
+      } else if ( filter ) {
+        match = `${task.project_label || ''}.${task.parent_label || ''}.${task.label || ''}.${task.description}`.toLowerCase().indexOf(filter.toLowerCase()) > -1;
+      } else {
+        match = true;
+      }
+
+      if ( match ) {
+        searchResults.push(task)
+        nomatches = 0;
+      } else {
+        nomatches++;
+      }
+
+      // don't freeze ui if too many consecutive no matches.
+      if ( nomatches > 200 ) {
+        nomatches = 0;
+      }
+
+      // yield while low number of no matches(or matches)
+      if ( nomatches < 2 ) {
+        yield searchResults;
+      }
+    }
+
+    return searchResults;
+  }
+
   handleSearchChange(event : any) {
+    this.updateSearch(event.target.value);
+  }
+
+  updateSearch(filter) {
+    console.log("Update search: ", filter);
+    if ( this.search ) {
+      this.search.stop(false);
+      this.search = null;
+    }
+
+    this.search = throttle(this.throttledSearch(filter), 15, (tasks) => {
+      if ( tasks ) {
+        this.setState({
+          update: !this.state.update,
+          filteredTasks: tasks
+        });
+      }
+    });
+
+    this.search.whenDone.then((tasks) => {
+      this.search = null;
+      this.setState({
+        update: !this.state.update
+      });
+    });
+
     this.setState({
-      search: event.target.value
+      search: filter
     });
   }
 
@@ -274,6 +351,11 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       return this.onStopTask(task);
     }
 
+    let searchLeftIcon = "search";
+    if ( this.search && !this.search.done ) {
+      searchLeftIcon = (<Spinner size={15} intent={Intent.PRIMARY} className="smallspinner"/>);
+    }
+
     return <div className="page">
       <div className="page-title">Tasks</div>
       <div className="page-content">
@@ -282,22 +364,13 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
             fill
             autoFocus
             className="ctrl-field"
-            leftIcon="search" 
+            leftIcon={searchLeftIcon}
             type="search"
             placeholder="Search tasks..."
             onChange={handleSearchChange}
             />
-          { this.props.backend.tasks.filter((task : DataTypes.Task) => {
-            if ( task.is_running ) {
-              return true;
-            }
-
-            if ( this.state.search ) {
-              return `${task.project_label || ''}.${task.parent_label || ''}.${task.label || ''}.${task.description}`.toLowerCase().indexOf(this.state.search.toLowerCase()) > -1;
-            }
-
-            return true;
-          }).map((t, k) => <TaskListItem 
+          
+          { this.state.filteredTasks.map((t, k) => <TaskListItem 
               key={`task-${k}`} 
               task={t}
               activities={this.props.backend.activities || []}

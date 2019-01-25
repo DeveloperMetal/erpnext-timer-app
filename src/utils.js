@@ -74,3 +74,69 @@ export function makeCancelable(promise) {
 export function promiseFinally(promise, fn) {
   return promise.then(fn).catch(fn);
 }
+
+export function throttle(gen, delay, onStep) {
+
+  let api = {
+    done: false,
+    value: undefined,
+    whenDone: undefined,
+    _resolve: undefined,
+    _reject: undefined,
+
+    init(resolve, reject) {
+      this._resolve = resolve;
+      this._reject = reject;
+    },
+
+    _intervalID: setInterval(function() {
+      try {
+        let result = gen.next();
+
+        if ( typeof result.value !== undefined ) {
+          api.value = result.value;
+
+          if (typeof onStep === 'function' ) {
+            onStep(api.value);
+          }  
+        }
+
+        if ( result.done ) {
+          api.stop(true, undefined, 'success');
+        }
+      } catch (err) {
+        console.error(err);
+        api.stop(false, 'error', err);
+      }
+    }, delay),
+
+    stop(done, reason = 'user', err = undefined) {
+      this.done = done;
+      this.doneReason = reason;
+      gen.return();
+
+      if ( this._intervalID ) {
+        clearInterval(this._intervalID);
+        this._intervalID = null;
+      }
+
+      if ( done ) {
+        this._resolve(api.value);
+      } else if ( err ) {
+        this._reject(err);
+      }
+    }
+  }
+
+  api.whenDone = new Promise((resolve, reject) => {
+    api.init(resolve, reject);
+  });
+
+  return api;
+}
+
+export function decodeHTML(html) {
+  let el = document.createElement("textarea");
+  el.innerHTML = html;
+  return el.value;
+}
