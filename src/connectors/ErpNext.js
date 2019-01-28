@@ -350,6 +350,36 @@ function findEmployeeByUserId(user_id : string) : Promise<any> {
   });
 }
 
+function getUserDetails(user_id : string) : Promise<DataTypes.User> {
+  let user : DataType.User;
+
+  return frappe.resource("User").read({
+    fields: ["name", "user_image", "first_name", "last_name"],
+    filters: [
+      ["name", "=", user_id]
+    ]
+  })
+  .then((result) => {
+    if ( result.length > 0 ) {
+      user = {
+        employee_name: "",
+        avatar: result[0].user_image,
+        fullname: `${result[0].first_name} ${result[0].last_name}`,
+        id: result[0].name
+      }
+    } else {
+      throw new Error(`User ${user_id} not found`);
+    }
+    return findEmployeeByUserId(user_id);
+  })
+  .then((result) => {
+    if ( result.length > 0 ) {
+      user.employee_name = result[0].name
+    }
+    return user;
+  })
+}
+
 function buildTimesheetDetail(
   task : string, 
   project : string, 
@@ -547,11 +577,11 @@ const API : DataTypes.ConnectorAPI = {
       withCredentials: true
     })
     .then(() => {
-      return findEmployeeByUserId(auth.usr);
+      return getUserDetails(auth.usr);
     })
-    .then(employee => {
+    .then(user => {
       window.frappe = frappe;
-      return { employee_name: employee.name }
+      return user;
     })
     .catch(err => {
       // wrap error so we at least know what originated it
@@ -663,6 +693,8 @@ const API : DataTypes.ConnectorAPI = {
         return results.message.map(result => {
           let parser = new DOMParser().parseFromString((result.description || ""), "text/html");
           return Object.assign({}, result, {
+            assigned_users: JSON.parse(result.assigned_users || "[]"),
+            weight: result.weight || 0,
             description: parser.body?parser.body.textContent || "":"",
             is_running: result.is_running?true:false, // I want booleans
             last_open_timer: result.last_open_timer?moment(result.last_open_timer, dateTimeFormat):null,
@@ -830,6 +862,10 @@ const API : DataTypes.ConnectorAPI = {
       .then((result : any) => {
         return result.name;
       });
+  },
+
+  getUserDetails(user_id : string) : Promise<User> {
+    return getUserDetails(user_id);
   }
 };
 

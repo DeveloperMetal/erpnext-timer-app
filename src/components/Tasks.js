@@ -5,8 +5,9 @@ import { mainProcessAPI } from "../utils";
 
 // Third party
 import React from "react";
-import { InputGroup, Card, Button, Tag, MenuItem, Intent, Spinner } from "@blueprintjs/core";
+import { ControlGroup, Switch, InputGroup, Card, Button, Tag, MenuItem, Intent, Spinner } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
+import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import  classNames from 'classnames';
 import moment from "moment";
 import momentDurationFormatSetup from "moment-duration-format";
@@ -24,6 +25,7 @@ import * as ReactTypes from "react";
 // Components
 import { BackendConsumer } from "../connectors/Data";
 import { makeCancelable, throttle, decodeHTML } from "../utils";
+import UserAvatar from "./UserAvatar";
 
 const ActivityPredicate = (query, activity) => {
   return activity.label.toLowerCase().indexOf(query.toLowerCase()) >= 0;
@@ -57,8 +59,11 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     this.timerId = null; 
   }
 
-  shouldComponentUpdate(newProps) {
-    return this.props.to_time != newProps.to_time || this.props.waiting != newProps.waiting;
+  shouldComponentUpdate(newProps : TaskListItemProps) : boolean {
+    return this.props.to_time != newProps.to_time || 
+    this.props.waiting != newProps.waiting ||
+    this.props.task.id != newProps.task.id ||
+    this.props.task.is_running != newProps.task.is_running;
   }
 
   setupTimer() {
@@ -162,6 +167,8 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     let total_time = moment.duration(total_ms, "ms").format()
     let description = (task.description || "");
 
+    console.log(task);
+
     return <Card 
         elevation={1} 
         interactive 
@@ -211,6 +218,11 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
 
         </div>
       </div>
+      <div className="assigned">{
+        (task.assigned_users || []).map((a) => (
+          <UserAvatar key={`${task.id}.${a}`} fetchUser={() => this.props.backend.actions.getUserDetails(a)} />
+        ))
+      }</div>
       <div className="tags">
         { tags }
       </div>
@@ -219,6 +231,8 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
 }
 
 export class TaskList extends React.PureComponent<TaskListProps, TaskListState> {
+  search : any | null;
+
   constructor(props : TaskListProps) {
     super(props);
 
@@ -227,11 +241,14 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       search: "",
       onTimerStartGoto: 'timesheet',
       filteredTasks: [],
-      update: false
+      update: false,
+      assignedOnly: true
     }
+
+    this.search = null;
   }
 
-  componentDidMount() {
+  componentDidMount() : void {
     const { backend } = this.props;
 
     backend.actions.listTasks()
@@ -247,7 +264,7 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     });
   }
 
-  componentWillUnmount() {
+  componentWillUnmount() : void {
     if ( this.search ) {
       this.search.stop(false);
       this.search = null;
@@ -261,6 +278,8 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     return backend.actions.startTask(task, activity).then(() => {
       if ( this.state.onTimerStartGoto === 'timesheet' ) {
         this.props.nav("timesheet");
+      } else {
+        this.updateSearch(this.state.search);
       }
     })
   }
@@ -268,15 +287,17 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
   onStopTask(task : DataTypes.Task) : Promise<any> {
     const { backend } = this.props;
 
-    return backend.actions.stopTask(task);
+    return backend.actions.stopTask(task)
+      .then(() => this.updateSearch(this.state.search));
+  
   }
 
-  *throttledSearch(filter) {
+  *throttledSearch(filter : string) : Generator<DataTypes.TaskList, DataTypes.TaskList, DataTypes.TaskList> {
     if ( !filter ) { filter = "" }
 
-    const searchResults = [];
+    const searchResults : DataTypes.TaskList = [];
     let match : boolean;
-    let nomatches = 0;
+    let nomatches : number = 0;
     for(let task of this.props.backend.tasks) {
       match = false;
       if ( task.is_running ) {
@@ -285,6 +306,11 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
         match = `${task.project_label || ''}.${task.parent_label || ''}.${task.label || ''}.${task.description}`.toLowerCase().indexOf(filter.toLowerCase()) > -1;
       } else {
         match = true;
+      }
+
+      console.log(task.assigned_users, 'vs', this.props.backend.user.id);
+      if ( this.state.assignedOnly && !(task.assigned_users.indexOf(this.props.backend.user.id) > -1) ) {
+        match = false;
       }
 
       if ( match ) {
@@ -308,12 +334,11 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     return searchResults;
   }
 
-  handleSearchChange(event : any) {
+  handleSearchChange(event : any) : void {
     this.updateSearch(event.target.value);
   }
 
-  updateSearch(filter) {
-    console.log("Update search: ", filter);
+  updateSearch(filter : string) : void {
     if ( this.search ) {
       this.search.stop(false);
       this.search = null;
@@ -321,6 +346,28 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
 
     this.search = throttle(this.throttledSearch(filter), 15, (tasks) => {
       if ( tasks ) {
+        tasks.sort((a, b) => {
+          if ( a.is_running ) {
+            return -1;
+          }
+
+          if ( b.is_running ) {
+            return 1;
+          }
+
+          let aIsAssignedToUser = a.assigned_users.indexOf(this.props.backend.user.id) > -1;
+          let bIsAssignedToUser = b.assigned_users.indexOf(this.props.backend.user.id) > -1;
+
+          if ( aIsAssignedToUser && bIsAssignedToUser ) {
+            return a.weight - b.weight;  
+          } else if (aIsAssignedToUser) {
+            return -1;
+          } else if (bIsAssignedToUser) {
+            return 1;
+          }
+
+          return a.weight - b.weight;
+        });
         this.setState({
           update: !this.state.update,
           filteredTasks: tasks
@@ -328,7 +375,7 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       }
     });
 
-    this.search.whenDone.then((tasks) => {
+    this.search.whenDone.then((tasks : DataTypes.TaskList) => {
       this.search = null;
       this.setState({
         update: !this.state.update
@@ -340,9 +387,25 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     });
   }
 
+  handleAssignedChange(event : any) : void {
+    if ( this.search ) {
+      this.search.stop(false);
+      this.search = null;
+    }
+
+    console.log("Assigned value?", event.target.checked);
+
+    this.setState({
+      assignedOnly: event.target.checked?true:false
+    }, () => {
+      this.updateSearch(this.state.search)
+    });
+  }
+
   render() {
 
     const handleSearchChange = (event : any) => this.handleSearchChange(event)
+    const handleAssignedChange = (event : any) => this.handleAssignedChange(event)
 
     const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any>  => {
       return this.onStartTask(task, activity);
@@ -360,23 +423,38 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       <div className="page-title">Tasks</div>
       <div className="page-content">
         <div className="task-list">
-          <InputGroup 
-            fill
-            autoFocus
-            className="ctrl-field"
-            leftIcon={searchLeftIcon}
-            type="search"
-            placeholder="Search tasks..."
-            onChange={handleSearchChange}
-            />
-          
-          { this.state.filteredTasks.map((t, k) => <TaskListItem 
-              key={`task-${k}`} 
-              task={t}
-              activities={this.props.backend.activities || []}
-              onStartTask={onStartTask}
-              onStopTask={onStopTask}
-            />) }
+          <ControlGroup className="ctrl-flex">
+            <InputGroup 
+              fill
+              autoFocus
+              className="ctrl-field ctrl-flex-auto"
+              leftIcon={searchLeftIcon}
+              type="search"
+              placeholder="Search tasks..."
+              onChange={handleSearchChange}
+              />
+            <Switch 
+              large 
+              className="ctrl-field ctrl-std ctrl-flex-static"
+              checked={this.state.assignedOnly} 
+              label="Assigned" 
+              onChange={handleAssignedChange} />
+          </ControlGroup>
+          <TransitionGroup className="tasks-items">
+            { this.state.filteredTasks.map((t, k) => 
+              <CSSTransition key={k}
+                timeout={200}
+                classNames="fade">
+                <TaskListItem 
+                key={`task-${t.id}`} 
+                task={t}
+                backend={this.props.backend}
+                activities={this.props.backend.activities || []}
+                onStartTask={onStartTask}
+                onStopTask={onStopTask} />
+              </CSSTransition>
+            )}
+          </TransitionGroup>
         </div>
       </div>
     </div>

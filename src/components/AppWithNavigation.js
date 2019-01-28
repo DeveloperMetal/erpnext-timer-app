@@ -35,12 +35,12 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
           path: "timesheet",
           label: "Timesheet",
           icon: <Tooltip content="View timesheet timeline"><Icon icon="calendar" iconSize={iconSize} /></Tooltip>,
+        },
+        {
+          path: "tasks",
+          label: "Tasks",
+          icon: <Tooltip content="View tasks and start/stop timer."><Icon icon="time" iconSize={iconSize} /></Tooltip>,
           items: [
-            {
-              path: "tasks",
-              label: "Tasks",
-              icon: <Tooltip content="View tasks and start/stop timer."><Icon icon="time" iconSize={iconSize} /></Tooltip>,
-            },
             {
               path: "new-task",
               label: "New Task",
@@ -60,7 +60,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
   }
 
   onPathChange(path : string) {
-    if ( path != "expand" ) {
+    if ( path !== "expand" ) {
       if ( path ) {
         this.setState({
           activePath: path
@@ -83,7 +83,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
 
     return <div id='app' className='bloom'>
       <VerticalNav
-        defaultPath="timesheet/tasks" 
+        defaultPath="tasks" 
         activePath={activePath}
         items={menuItems} 
         collapsed={this.state.menuCollapsed} 
@@ -91,9 +91,9 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
         onPathChange={onPathChange}
       />
       <div id='content'>
-        { activePath === "timesheet/tasks" && ( <TaskPage nav={onPathChange} /> ) }
+        { activePath === "tasks" && ( <TaskPage nav={onPathChange} /> ) }
         { activePath === "timesheet" && ( <TimelinePage nav={onPathChange} /> ) }
-        { activePath === "timesheet/new-task" && ( <AddTaskPage nav={onPathChange } /> ) }
+        { activePath === "tasks/new-task" && ( <AddTaskPage nav={onPathChange } /> ) }
         { activePath === "settings" && ( <SettingsPage nav={onPathChange } /> ) }
       </div>
     </div>

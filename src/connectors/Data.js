@@ -76,7 +76,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         host: ""
       },
       user: {
-        employee_name: ""
+        employee_name: "",
+        id: ""
       },
       day: moment(),
       timeline: [],
@@ -100,6 +101,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "setCurrentDate",
           "newTask",
           "getTaskById",
+          "getUserDetails",
           "deleteTimeblock"
         ]),
       }
@@ -322,6 +324,10 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return null;
   }
 
+  getUserDetails(user_id) {
+    return this.connector.getUserDetails(user_id);
+  }
+
   deleteTimeblock(timeblock_id : string) : Promise<any> {
     return this.connector
       .deleteTimeblock(timeblock_id)
@@ -341,7 +347,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     return this.connector
       .startTask(task, activity, timestamp, this.state.user.employee_name)
       .then(() => {
-        this.listTasks();
+        return this.listTasks();
       })
       .catch(err => {
         this.throwError(err)

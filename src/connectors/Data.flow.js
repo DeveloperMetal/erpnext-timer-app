@@ -31,7 +31,10 @@ export type Props = {
 }
 
 export type User = {
-  employee_name : string
+  employee_name : string,
+  avatar?: string | null,
+  fullname?: string | null,
+  id: string
 }
 
 export type State = {
@@ -67,8 +70,11 @@ export type Task = {
   project_id : string,
   parent_id : string | null,
   parent_label: string | null,
-  tags : Array<string>
+  tags : Array<string>,
+  assigned_users: Array<string>
 }
+
+export type TaskList = Array<DataTypes.Task>;
 
 export type TimelineItem = {
   id: string,

@@ -320,6 +320,27 @@ html, body, #root {
             }
         }
 
+        .assigned {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+
+        .user-avatar {
+            display: inline-block;
+            color: rgb(216, 216, 216);
+            background-color: rgb(250, 250, 250);
+            border: 1px solid rgb(189, 189, 189);
+            border-radius: 2px;
+            margin: 1px;
+            width: 40px;
+            height: 40px;
+
+            img {
+                width: 100%;
+            }
+        }
+
         .related {
             display: flex;
             flex-direction: row;
@@ -630,3 +651,4 @@ html, body, #root {
     transform: translateY(-50%);
     z-index: 1;
 }
+

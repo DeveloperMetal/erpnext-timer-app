@@ -75,7 +75,8 @@
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "react-hot-loader": "^4.6.3",
-    "react-measure": "^2.2.2"
+    "react-measure": "^2.2.2",
+    "react-transition-group": "^2.5.3"
   },
   "prettier": {
     "printWidth": 100,
