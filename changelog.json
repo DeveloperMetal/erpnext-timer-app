@@ -1,8 +1,23 @@
 [
     {
+        "version": "1.2.0",
+        "date": "2019-01-28",
+        "message": "More QOL improvements!",
+        "added": [
+            "You can now filter out tasks assigned to you. This is now the default.",
+            "Fast search query! Added debouncing and api throttling to improve UI stutter.",
+            "Tasks search spinner now appears while you type out your queries for live fetching",
+            "Added avatar fetching from server.",
+            "Added assigned tasks priority sorting so they always appear at the top of the list",
+            "Added transitions to task cards while they load to minimize UI jumps"
+        ], 
+        "changed": [
+            "Moved tasks tab to its own root menu. Makes moving around less tedious."
+        ]
+    },    {
         "version": "1.1.0",
         "date": "2019-01-23",
-        "message": "QoF update. It was all about the settings baby!",
+        "message": "QoL update. It was all about the settings baby!",
         "added": [
             "Settings Page.",
             "Quit button in settings page.",
