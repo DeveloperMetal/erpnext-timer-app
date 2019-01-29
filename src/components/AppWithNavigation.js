@@ -23,7 +23,7 @@ export default class extends React.PureComponent<NavTypes.Props, NavTypes.State>
     super(props)
 
     this.state = {
-      activePath: "timesheet/tasks",
+      activePath: "tasks",
       menuCollapsed: true,
       menuItems: [
         {
