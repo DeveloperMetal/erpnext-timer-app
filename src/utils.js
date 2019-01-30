@@ -30,8 +30,6 @@ export function mainProcessAPI(api, ...args) {
       reject(result);
     }
 
-    console.log("Calling: ", api, args, params);
-
     ipcRenderer.once(params.response_channel, responseFn);
     ipcRenderer.once(params.error_channel, errorFn);
     ipcRenderer.send(`api:${api}`, ...params);
@@ -75,11 +73,13 @@ export function promiseFinally(promise, fn) {
   return promise.then(fn).catch(fn);
 }
 
-export function throttle(gen, delay, onStep) {
+export function throttle(gen, delay, onStep, startDelay) {
 
   let api = {
     done: false,
     value: undefined,
+    delay,
+    startDelay,
     whenDone: undefined,
     _resolve: undefined,
     _reject: undefined,
@@ -87,43 +87,57 @@ export function throttle(gen, delay, onStep) {
     init(resolve, reject) {
       this._resolve = resolve;
       this._reject = reject;
+      this._nextLoop(this.startDelay || this.delay || 50);
     },
 
-    _intervalID: setInterval(function() {
-      try {
-        let result = gen.next();
+    _nextLoop(delay) {
+      this._timeoutID = setTimeout(() => {
+        try {
+          let result = gen.next();
+          let next = () => {
+            if ( result.done ) {
+              this.stop(true, undefined, 'success');
+            } else if ( !this.done ) {
+              this._nextLoop(this.delay);
+            }
+          }
+  
+          if ( typeof result.value !== undefined ) {
+            this.value = result.value;
+  
+            if (typeof onStep === 'function' ) {
+              onStep(this.value, this, next);
+            } else {
+              next();
+            }
+          } else {
+            next();
+          }
 
-        if ( typeof result.value !== undefined ) {
-          api.value = result.value;
-
-          if (typeof onStep === 'function' ) {
-            onStep(api.value);
-          }  
+        } catch (err) {
+          console.error(err);
+          this.stop(false, 'error', err);
         }
-
-        if ( result.done ) {
-          api.stop(true, undefined, 'success');
-        }
-      } catch (err) {
-        console.error(err);
-        api.stop(false, 'error', err);
-      }
-    }, delay),
+  
+      }, delay);
+    },
 
     stop(done, reason = 'user', err = undefined) {
       this.done = done;
       this.doneReason = reason;
       gen.return();
 
-      if ( this._intervalID ) {
-        clearInterval(this._intervalID);
-        this._intervalID = null;
+      if ( this._timeoutID ) {
+        clearTimeout(this._timeoutID);
+        this._timeoutID = null;
       }
 
       if ( done ) {
-        this._resolve(api.value);
+        this._resolve({ result: api.value, reason: this.doneReason, wasCanceled: false});
       } else if ( err ) {
         this._reject(err);
+      } else {
+        this._resolve({ result: api.value,  reason: this.doneReason, wasCanceled: true});
       }
     }
   }

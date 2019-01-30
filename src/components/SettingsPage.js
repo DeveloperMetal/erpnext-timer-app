@@ -178,13 +178,12 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
   handleOnTimerStartGoto(where : string) : void {
     mainProcessAPI("setUserSettings", { "onTimerStartGoto": where})
     .then((result) => {
-      console.log(result);
       this.setState({
         onTimerStartGoto: where
       });
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
     })
   }
 

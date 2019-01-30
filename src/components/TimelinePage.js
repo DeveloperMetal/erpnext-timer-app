@@ -149,7 +149,6 @@ export class TimelineComp extends React.PureComponent<TimelineCompProps, Timelin
   }
 
   handleTimeBlockDelete(item : DataTypes.TimelineItem) : void {
-    console.log("Delete timeblock: ", item);
     promiseFinally(this.props.backend.actions.deleteTimeblock(item.id), () => {
       this.setState({
         refresh: this.state.refresh * -1

@@ -167,8 +167,6 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     let total_time = moment.duration(total_ms, "ms").format()
     let description = (task.description || "");
 
-    console.log(task);
-
     return <Card 
         elevation={1} 
         interactive 
@@ -220,7 +218,7 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
       </div>
       <div className="assigned">{
         (task.assigned_users || []).map((a) => (
-          <UserAvatar key={`${task.id}.${a}`} fetchUser={() => this.props.backend.actions.getUserDetails(a)} />
+          <UserAvatar key={`${task.id}.${a}`} user={a} fetchUser={(userId) => this.props.backend.actions.getUserDetails(userId)} />
         ))
       }</div>
       <div className="tags">
@@ -230,7 +228,7 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
   }
 }
 
-export class TaskList extends React.PureComponent<TaskListProps, TaskListState> {
+export class TaskList extends React.Component<TaskListProps, TaskListState> {
   search : any | null;
 
   constructor(props : TaskListProps) {
@@ -246,6 +244,10 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     }
 
     this.search = null;
+  }
+
+  shouldComponentUpdate(newProps, newState) {
+    return this.state.update != newState.update;
   }
 
   componentDidMount() : void {
@@ -296,9 +298,38 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
     if ( !filter ) { filter = "" }
 
     const searchResults : DataTypes.TaskList = [];
+    let search = this.search;
     let match : boolean;
+    let batch : number = 0;
     let nomatches : number = 0;
-    for(let task of this.props.backend.tasks) {
+
+    yield searchResults;
+
+    let tasks : DataTypes.TaskList = this.props.backend.tasks.slice(0);
+    tasks.sort((a : DataTypes.Task, b : DataTypes.Task ) => {
+      if ( a.is_running ) {
+        return -1;
+      }
+
+      if ( b.is_running ) {
+        return 1;
+      }
+
+      let aIsAssignedToUser = a.assigned_users.indexOf(this.props.backend.user.id) > -1;
+      let bIsAssignedToUser = b.assigned_users.indexOf(this.props.backend.user.id) > -1;
+
+      if ( aIsAssignedToUser && bIsAssignedToUser ) {
+        return a.weight - b.weight;  
+      } else if (aIsAssignedToUser) {
+        return -1;
+      } else if (bIsAssignedToUser) {
+        return 1;
+      }
+
+      return a.weight - b.weight;
+    });
+
+    for(let task of tasks) {
       match = false;
       if ( task.is_running ) {
         match = true;
@@ -308,26 +339,30 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
         match = true;
       }
 
-      console.log(task.assigned_users, 'vs', this.props.backend.user.id);
       if ( this.state.assignedOnly && !(task.assigned_users.indexOf(this.props.backend.user.id) > -1) ) {
         match = false;
       }
 
       if ( match ) {
         searchResults.push(task)
+        batch++;
         nomatches = 0;
       } else {
         nomatches++;
       }
 
-      // don't freeze ui if too many consecutive no matches.
-      if ( nomatches > 200 ) {
+      // don't freeze ui if too many consecutive items processed.
+      if ( batch > 5 ) {
+        batch = 0;
+        yield searchResults;
+      } else if ( nomatches > 25 ) {
         nomatches = 0;
+        yield searchResults;
       }
 
-      // yield while low number of no matches(or matches)
-      if ( nomatches < 2 ) {
-        yield searchResults;
+      // search was canceled
+      if ( search && search.done ) {
+        return searchResults;
       }
     }
 
@@ -344,42 +379,35 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       this.search = null;
     }
 
-    this.search = throttle(this.throttledSearch(filter), 15, (tasks) => {
-      if ( tasks ) {
-        tasks.sort((a, b) => {
-          if ( a.is_running ) {
-            return -1;
-          }
-
-          if ( b.is_running ) {
-            return 1;
-          }
-
-          let aIsAssignedToUser = a.assigned_users.indexOf(this.props.backend.user.id) > -1;
-          let bIsAssignedToUser = b.assigned_users.indexOf(this.props.backend.user.id) > -1;
-
-          if ( aIsAssignedToUser && bIsAssignedToUser ) {
-            return a.weight - b.weight;  
-          } else if (aIsAssignedToUser) {
-            return -1;
-          } else if (bIsAssignedToUser) {
-            return 1;
-          }
-
-          return a.weight - b.weight;
-        });
+    this.search = throttle(this.throttledSearch(filter), 200, (tasks, scheduler, next) => {
+      if ( !scheduler.done && tasks ) {
         this.setState({
           update: !this.state.update,
           filteredTasks: tasks
+        }, () => {
+          next();
+        });
+      } else {
+        next();
+      }
+    }, 500);
+
+    this.search.whenDone.then(({ wasCanceled }) => {
+      this.search = null;
+      if ( !wasCanceled ) {
+        this.setState(state => { 
+          return {
+            update: !state.update
+          }
+        });
+      } else {
+        this.setState(state => {
+          return {
+            update: !state.update,
+            filteredTasks: []
+          }
         });
       }
-    });
-
-    this.search.whenDone.then((tasks : DataTypes.TaskList) => {
-      this.search = null;
-      this.setState({
-        update: !this.state.update
-      });
     });
 
     this.setState({
@@ -393,10 +421,9 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
       this.search = null;
     }
 
-    console.log("Assigned value?", event.target.checked);
-
     this.setState({
-      assignedOnly: event.target.checked?true:false
+      assignedOnly: event.target.checked?true:false,
+      filteredTasks: []
     }, () => {
       this.updateSearch(this.state.search)
     });
@@ -416,45 +443,41 @@ export class TaskList extends React.PureComponent<TaskListProps, TaskListState> 
 
     let searchLeftIcon = "search";
     if ( this.search && !this.search.done ) {
-      searchLeftIcon = (<Spinner size={15} intent={Intent.PRIMARY} className="smallspinner"/>);
+      searchLeftIcon = (<Spinner size={15} intent={Intent.PRIMARY} className="small-spinner"/>);
     }
 
-    return <div className="page">
+    return <div className="page page-tasks">
       <div className="page-title">Tasks</div>
+      <div className="page-toolbar">
+        <ControlGroup className="ctrl-flex">
+          <InputGroup 
+            fill
+            autoFocus
+            className="ctrl-field ctrl-flex-auto"
+            leftIcon={searchLeftIcon}
+            type="search"
+            placeholder="Search tasks..."
+            onChange={handleSearchChange}
+            />
+          <Switch 
+            large 
+            className="ctrl-field ctrl-std ctrl-flex-static"
+            checked={this.state.assignedOnly} 
+            label="Assigned" 
+            onChange={handleAssignedChange} />
+        </ControlGroup>
+      </div>
       <div className="page-content">
         <div className="task-list">
-          <ControlGroup className="ctrl-flex">
-            <InputGroup 
-              fill
-              autoFocus
-              className="ctrl-field ctrl-flex-auto"
-              leftIcon={searchLeftIcon}
-              type="search"
-              placeholder="Search tasks..."
-              onChange={handleSearchChange}
-              />
-            <Switch 
-              large 
-              className="ctrl-field ctrl-std ctrl-flex-static"
-              checked={this.state.assignedOnly} 
-              label="Assigned" 
-              onChange={handleAssignedChange} />
-          </ControlGroup>
-          <TransitionGroup className="tasks-items">
             { this.state.filteredTasks.map((t, k) => 
-              <CSSTransition key={k}
-                timeout={200}
-                classNames="fade">
                 <TaskListItem 
-                key={`task-${t.id}`} 
-                task={t}
-                backend={this.props.backend}
-                activities={this.props.backend.activities || []}
-                onStartTask={onStartTask}
-                onStopTask={onStopTask} />
-              </CSSTransition>
+                  key={`task-${t.id}`} 
+                  task={t}
+                  backend={this.props.backend}
+                  activities={this.props.backend.activities || []}
+                  onStartTask={onStartTask}
+                  onStopTask={onStopTask} />
             )}
-          </TransitionGroup>
         </div>
       </div>
     </div>

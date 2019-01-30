@@ -122,9 +122,6 @@ function queryStringBuilder(args : any, encodeValues : any = false) : string {
 }
 
 function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
-  console.log("on parseFrappeErrorResponse");
-  console.dir(err);
-
   if (!err.response || typeof err.response.data === undefined) {
     return null;
   }
@@ -136,7 +133,6 @@ function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
   let isDataString = typeof err.response.data === 'string';
 
   let errorInfo = { status: err.status, statusText: err.statusText, data: err.response.data || '' };
-  //console.log("frappe parse error", errorInfo);
   if (err.status == 502 || (isDataString && errorInfo.data.search(/502\s+bad\s+gateway/gi) > -1)) {
     message = "Unable to reach remote server. \nGot 'Gateway Time-out'";
   } else if (typeof err.response.data === 'string') {
@@ -276,6 +272,7 @@ class FrappeResource {
       })
       .catch(err => {
         this._errorFactory(err, ReadError);
+        throw err;
       });
   }
 
@@ -292,7 +289,6 @@ class FrappeResource {
   delete(name : string) : Promise<any> {
     return axios.delete(`${this.host}/api/resource/${this.resource}/${name}`)
       .then(response => {
-        console.log("delete response: ", response.data);
         return response.data;
       })
       .catch(err => {
@@ -846,8 +842,6 @@ const API : DataTypes.ConnectorAPI = {
       .resource("Timesheet Detail")
       .delete(timeblock_id)
       .then((result) => {
-        console.log("Timeblock delted: ", timeblock_id);
-        console.log(result);
         return result;
       });
   },
