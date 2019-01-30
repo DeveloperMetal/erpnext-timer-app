@@ -13,5 +13,6 @@ export type State = {
   rememberLogin: boolean,
   loadingSettings: boolean,
   displayChangeLog : boolean,
-  changeLog: any
+  lastChangeLogVersion : string,
+  changeLog : any
 }

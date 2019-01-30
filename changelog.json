@@ -1,5 +1,19 @@
 [
     {
+        "version": "1.2.2",
+        "date": "2019-01-30",
+        "message": "Minor UI Improvements",
+        "added": [
+            "Included past change logs on change log display for unseen intermediate updates."
+        ], 
+        "changed": [
+            "Refactored search throttling scheme to improve UI performance.",
+            "Moved Task search to its own contaier as to keep in view while scrolling tasks",
+            "Fixed small issue with search spinner hiding behind search bar while typing",
+            "Refactored avatar to cache user info as to lower network calls.",
+            "Refactored avatar component to simplify it and avoid redraw."
+        ]
+    }, {
         "version": "1.2.0",
         "date": "2019-01-28",
         "message": "More QOL improvements!",

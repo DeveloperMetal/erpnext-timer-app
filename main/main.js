@@ -341,7 +341,7 @@ init.then(() => {
     ipcMain.on('api:setServerUrl', (event, request) => {
       serverUrl = request.args[0];
       event.sender.send(request.response_channel, true);
-    })
+    });
 
     ipcMain.on('api:appStarted', (event, request) => {
       let response = {
@@ -353,11 +353,12 @@ init.then(() => {
       if ( lastChangeLog != app.getVersion() ) {
         settings.set('last-changelog-displayed', app.getVersion());
         response.displayChangeLog = true;
+        response.lastChangeLogVersion = lastChangeLog;
       }
 
       event.sender.send(request.response_channel, response);
 
-    })
+    });
 
     ipcMain.on('api:getLoginInfo', (event, request) => {
 

@@ -39,7 +39,8 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
       autoLogin,
       loadingSettings: true,
       displayChangeLog: false,
-      changeLog: []
+      changeLog: [],
+      lastChangeLogVersion: ""
     }
 
   }
@@ -49,9 +50,16 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
     mainProcessAPI('appStarted')
       .then((response) => {
         if ( response.displayChangeLog ) {
+          // odd issue where ipc changes array to object
+          let changeLog = response.changeLog || [];
+          if ( changeLog && typeof changeLog.constructor !== Array ) {
+            console.log(changeLog);
+            changeLog = Object.keys(changeLog).map((k) => changeLog[k]);
+          }
           this.setState({
             displayChangeLog: response.displayChangeLog,
-            changeLog: response.changeLog
+            changeLog,
+            lastChangeLogVersion: response.lastChangeLogVersion
           })
         }
       })
@@ -135,6 +143,7 @@ export default class extends React.PureComponent<LoginTypes.Props, LoginTypes.St
             { this.state.displayChangeLog && (
               <ChangeLog 
                 onClose={ onChangeLogClose } 
+                lastChangeLogVersion={ this.state.lastChangeLogVersion }
                 changeLog={ this.state.changeLog } />
             )}
 
