@@ -54,8 +54,7 @@ There should be a logout option in the settings page as well as the login widget
 - [X] Finish erpnext connector to send/receipt timesheet info
 - [X] Build task entry details popup
 - [X] Close and minimize to tray actions
-- [ ] Logout button inside settings
-- [ ] Add quit app in settings page and login page.
+- [X] Logout button inside settings
+- [X] Add quit app in settings page and login page.
 - [ ] Add settings idle timeout settings
 - [X] Add task icon active task icon generation
-- [ ] Tie desktop idle to current cative task to remind user of active timer.

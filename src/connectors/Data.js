@@ -70,6 +70,10 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     this.state = {
       loggedIn: false,
       attemptingLogin: false,
+      idleTimeout: moment.duration(10, 'minutes'),
+      idleTimeoutID: false,
+      activeTaskID: false,
+      displayIdleMessage: false,
       auth: {
         usr: "",
         pwd: "",
@@ -93,6 +97,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "listTasks",
           "startTask",
           "stopTask",
+          "stopActiveTask",
           "dismissMessage",
           "userMessage",
           "listDayTimeline",
@@ -105,6 +110,19 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "deleteTimeblock"
         ]),
       }
+    }
+  }
+
+  componentDidMount() {
+    this.idleID = setInterval(() => {
+      this.updateIdleTimer();
+    }, 2000);
+  }
+
+  componentWillUnmount() {
+    if ( !!this.idleID ) {
+      clearInterval(this.idleID);
+      this.idleID = null;
     }
   }
 
@@ -180,28 +198,36 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
 
           mainProcessAPI('setServerUrl', auth.host);
 
-          this.setState({
-            attemptingLogin: false,
-            loggedIn: true,
-            auth,
-            user
-          }, () => done(user));
+          return new Promise((resolve) => {
+            this.setState({
+              attemptingLogin: false,
+              loggedIn: true,
+              auth,
+              user
+            }, () => {
+              resolve(user);
+              done(user);
+            });
+          });
         })
         .catch(err => {
-          this.setState({
-            attemptingLogin: false,
-            loggedIn: false,
-            auth: {
-              usr: "",
-              pwd: "",
-              host: ""
-            }
-          }, () =>
-            this.throwError(
-              err,
-              () => done(false, err)
-            )
-          );
+          return new Promise((resolve, reject) => {
+            this.setState({
+              attemptingLogin: false,
+              loggedIn: false,
+              auth: {
+                usr: "",
+                pwd: "",
+                host: ""
+              }
+            }, () => {
+              this.throwError(
+                err,
+                () => done(false, err)
+              );
+              reject(err);
+            });
+          });
         });
       });
   }
@@ -270,6 +296,40 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       .catch(err => this.throwError(err));
   }
 
+  updateIdleTimer() {
+    mainProcessAPI('getIdleTime').then((idle) => {
+      if ( idle < 5 ) {
+        if ( !!this.state.activeTaskID ) {
+          const idleStartTS = moment().utc();
+          const idleMaxTS = idleStartTS.add(this.state.idleTimeout);
+          this.setState({
+            idleStartTS,
+            idleMaxTS
+          });
+        } else {
+          this.setState({
+            idleStartTS: false,
+            idleMaxTS: false
+          });
+        }
+      }
+    });
+  }
+
+  stopActiveTask(removeDuration, duration) {
+    let timestamp = moment()
+    if ( removeDuration ) {
+      timestamp = timestamp.subtract(duration);
+    }
+
+    let task = this.state.tasks.find((task) => task.id === this.state.activeTaskID);
+    if ( task ) {
+      return this.stopTask(task, timestamp);
+    } else {
+      return Promise.reject();
+    }
+  }
+
   listTasks() : Promise<void> {
     // always fetch list of available activities, just in case
     // we have new ones while app is running
@@ -282,6 +342,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       let projects = results[0];
       let activities = results[1];
       let tasks = results[2];
+      let activeTaskID = false;
       tasks.sort((a, b) => (a.is_running?1:0) < (b.is_running?1:0)? 1:0);
 
       // let figure out if we have a running task and inform the main process of it
@@ -291,6 +352,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           let timestamp = task.last_open_timer.unix();
           if ( timestamp ) {
             foundRunningTask = true;
+            activeTaskID = task.id;
             ipcRenderer.send('timer-started', task.total_hours, timestamp );
             break;
           }
@@ -303,6 +365,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
 
       return new Promise((resolve) => {
         this.setState({
+          activeTaskID,
           projects,
           activities,
           tasks
@@ -346,24 +409,27 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     let timestamp = moment();
     return this.connector
       .startTask(task, activity, timestamp, this.state.user.employee_name)
-      .then(() => {
-        return this.listTasks();
-      })
+      .then(() => this.listTasks())
       .catch(err => {
         this.throwError(err)
       });
   }
 
-  stopTask(task : DataTypes.Task) : Promise<any> {
-    let timestamp = moment();
-    return this.connector
-      .stopTask(task, timestamp, this.state.user.employee_name)
-      .then(() => {
-        return this.listTasks();
+  stopTask(task : DataTypes.Task, timestamp : Moment) : Promise<any> {
+    if ( !!timestamp === false ) {
+      timestamp = moment();
+    }
+
+    return new Promise((resolve) => {
+        this.setState({
+          activeTaskID: null // we are using null as an intermediary value before finally setting false. Timeline then can update preemptively along with idle message.
+        }, resolve);
       })
-      .catch(err => {
-        this.throwError(err)
-      });
+      .then(() => 
+        this.connector
+          .stopTask(task, timestamp, this.state.user.employee_name))
+      .then(() => this.listTasks())
+      .catch(err => this.throwError(err));
   }
 
   render() {

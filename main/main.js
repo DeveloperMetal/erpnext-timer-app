@@ -216,10 +216,6 @@ init.then(() => {
       Sentry.captureMessage("Update downloaded and ready to install!");
     });
 
-    ipcMain.on('getIdleTime', (event, arg) => {
-      event.sender.send('setIdleTime', desktopIdle.getIdleTime())
-    });
-
     ipcMain.on('getSetting', (event, key, defaultValue) => {
       let result = settings.get(key, defaultValue);
       event.returnValue = result || '';
@@ -279,6 +275,24 @@ init.then(() => {
         }
       })
     }
+
+    ipcMain.on('api:showApp', (event, request) => {
+      try {
+        mainWindow.show();
+        mainWindow.focus();
+        event.sender.send(request.response_channel, true);
+      } catch (err) {
+        event.sender.send(request.error_channel, { error: err.toString() });
+      }
+    })
+
+    ipcMain.on('api:getIdleTime', (event, request) => {
+      try {
+        event.sender.send(request.response_channel, desktopIdle.getIdleTime())
+      } catch (err) {
+        event.sender.send(request.error_channel, { error: err.toString() });
+      }
+    });
 
     ipcMain.on('api:quit', (event) => {
       app.isQuiting = true;

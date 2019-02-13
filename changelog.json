@@ -1,5 +1,18 @@
 [
     {
+        "version": "1.2.3",
+        "date": "2019-02-12",
+        "message": "Idle time and Bug fixes",
+        "added": [
+            "Added idle time message after 10 minutes of idle time."
+        ],
+        "changed": [
+            "Fixed regression issue where employee_name wasn't passed to backend queries causing tasks to be tracked by no employee.",
+            "Fixed issue where task time ticker stoped working after task search functionality was introduced.",
+            "Refactored component update methodology to accomodate idle messaging."
+        ]
+    },
+    {
         "version": "1.2.2",
         "date": "2019-01-30",
         "message": "Minor UI Improvements",
@@ -8,8 +21,8 @@
         ], 
         "changed": [
             "Refactored search throttling scheme to improve UI performance.",
-            "Moved Task search to its own contaier as to keep in view while scrolling tasks",
-            "Fixed small issue with search spinner hiding behind search bar while typing",
+            "Moved Task search to its own contaier as to keep in view while scrolling tasks.",
+            "Fixed small issue with search spinner hiding behind search bar while typing.",
             "Refactored avatar to cache user info as to lower network calls.",
             "Refactored avatar component to simplify it and avoid redraw."
         ]
@@ -20,10 +33,10 @@
         "added": [
             "You can now filter out tasks assigned to you. This is now the default.",
             "Fast search query! Added debouncing and api throttling to improve UI stutter.",
-            "Tasks search spinner now appears while you type out your queries for live fetching",
+            "Tasks search spinner now appears while you type out your queries for live fetching.",
             "Added avatar fetching from server.",
-            "Added assigned tasks priority sorting so they always appear at the top of the list",
-            "Added transitions to task cards while they load to minimize UI jumps"
+            "Added assigned tasks priority sorting so they always appear at the top of the list.",
+            "Added transitions to task cards while they load to minimize UI jumps."
         ], 
         "changed": [
             "Moved tasks tab to its own root menu. Makes moving around less tedious."
@@ -42,7 +55,7 @@
             "Added user toast message. Right now only used on settings to inform user when shortcut keys were successfully set on the OS."
         ], 
         "changed": [
-            "How settings are stored and managed internally",
+            "How settings are stored and managed internally.",
             "Expanded main process api to handle more of the system configurations outside of the app rendering."
         ]
     },    {

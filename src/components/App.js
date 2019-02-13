@@ -11,6 +11,7 @@ import { BackendProvider, BackendConsumer } from "../connectors/Data";
 import Login from "./Login";
 import LoginScreen from "./LoginScreen";
 import AppWithNavigation from "./AppWithNavigation";
+import IdleMessage from "./IdleMessage";
 
 // flow types
 import * as Types from "./Types.flow";
@@ -125,19 +126,24 @@ export class App extends React.Component<AppTypes.Props, AppTypes.State> {
 
       <BackendConsumer>
         { (backend : DataTypes.State) => {
-          return <Toaster 
-              position={Position.TOP}
-            >
-              { backend.userMessages.map(msg => <Toast 
-                  {...msg}
-                  key={msg.message}
-                  message={msg.message}
-                  onDismiss={() => {
-                    backend.actions.dismissMessage(msg)
-                  }}
-                />
-              ) }
-            </Toaster>
+          return (
+            <React.Fragment>
+              <Toaster 
+                position={Position.TOP}
+              >
+                { backend.userMessages.map(msg => <Toast 
+                    {...msg}
+                    key={msg.message}
+                    message={msg.message}
+                    onDismiss={() => {
+                      backend.actions.dismissMessage(msg)
+                    }}
+                  />
+                ) }
+              </Toaster>
+              { <IdleMessage backend={backend} /> }
+            </React.Fragment>
+          )
         }}
       </BackendConsumer>
 

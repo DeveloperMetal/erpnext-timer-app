@@ -59,11 +59,18 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     this.timerId = null; 
   }
 
-  shouldComponentUpdate(newProps : TaskListItemProps) : boolean {
+  shouldComponentUpdate(newProps : TaskListItemProps, newState : TaskListStateProps) : boolean {
+
+    if ( newProps.task.id != this.props.task.id ) {
+      this.stopTimer();
+    }
+
     return this.props.to_time != newProps.to_time || 
+    this.props.from_time != newProps.from_time || 
     this.props.waiting != newProps.waiting ||
     this.props.task.id != newProps.task.id ||
-    this.props.task.is_running != newProps.task.is_running;
+    this.props.task.is_running != newProps.task.is_running ||
+    this.state.to_time != newState.to_time;
   }
 
   setupTimer() {
@@ -244,13 +251,23 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     }
 
     this.search = null;
+    this._willUnmount = false;
   }
 
   shouldComponentUpdate(newProps, newState) {
-    return this.state.update != newState.update;
+    if ( this.props.backend.activeTaskID != newProps.backend.activeTaskID ) {
+      this.updateTasks();
+    }
+
+    return this.state.update != newState.update ||
+      this.props.backend.tasks != newProps.backend.tasks;
   }
 
-  componentDidMount() : void {
+  updateTasks() {
+    if ( this._willUnmount ) {
+      return;
+    }
+
     const { backend } = this.props;
 
     backend.actions.listTasks()
@@ -258,19 +275,27 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
       return mainProcessAPI("getUserSettings", ["onTimerStartGoto"])
     })
     .then((result) => {
-      this.setState({
-        ...result
-      }, () => {
-        this.updateSearch(this.state.search);
-      });
-    });
+      if ( !this._willUnmount ) {
+        this.setState({
+          ...result
+        }, () => {
+          this.updateSearch(this.state.search);
+        });
+      }
+    });  }
+
+  componentDidMount() : void {
+    this._willUnmount = false;
+    this.updateTasks();
   }
 
   componentWillUnmount() : void {
+    this._willUnmount = true;
     if ( this.search ) {
       this.search.stop(false);
       this.search = null;
     }
+
   }
 
 
@@ -364,6 +389,10 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
       if ( search && search.done ) {
         return searchResults;
       }
+
+      if ( this._willUnmount ) {
+        return searchResults;
+      }
     }
 
     return searchResults;
@@ -374,12 +403,16 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
   }
 
   updateSearch(filter : string) : void {
+    if ( this._willUnmount ) {
+      return;
+    }
+
     if ( this.search ) {
       this.search.stop(false);
       this.search = null;
     }
 
-    this.search = throttle(this.throttledSearch(filter), 200, (tasks, scheduler, next) => {
+    this.search = throttle(this.throttledSearch(filter), 2000, (tasks, scheduler, next) => {
       if ( !scheduler.done && tasks ) {
         this.setState({
           update: !this.state.update,
@@ -394,19 +427,21 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
 
     this.search.whenDone.then(({ wasCanceled }) => {
       this.search = null;
-      if ( !wasCanceled ) {
-        this.setState(state => { 
-          return {
-            update: !state.update
-          }
-        });
-      } else {
-        this.setState(state => {
-          return {
-            update: !state.update,
-            filteredTasks: []
-          }
-        });
+      if ( !this._willUnmount ) {
+        if ( !wasCanceled ) {
+          this.setState(state => { 
+            return {
+              update: !state.update
+            }
+          });
+        } else {
+          this.setState(state => {
+            return {
+              update: !state.update,
+              filteredTasks: []
+            }
+          });
+        }
       }
     });
 

@@ -72,7 +72,7 @@ const TimeBlockContentRenderer = (item : DataTypes.TimelineItem) => {
   </React.Fragment>
 }
 
-export class TimelineComp extends React.PureComponent<TimelineCompProps, TimelineCompState> {
+export class TimelineComp extends React.Component<TimelineCompProps, TimelineCompState> {
   blockUpdateTimeoutId : TimeoutID | void;
 
   constructor(props : TimelineCompProps) {
@@ -84,6 +84,20 @@ export class TimelineComp extends React.PureComponent<TimelineCompProps, Timelin
     };
 
     this.blockUpdateTimeoutId = undefined;
+  }
+
+  shouldComponentUpdate(newProps, newState) : bool {
+
+    if ( this.props.backend.activeTaskID != newProps.backend.activeTaskID ) {
+      newProps.backend.actions.listDayTimeline();
+    }
+
+    return this.state.zoom != newState.zoom ||
+      this.state.refresh != newState.refresh ||
+      this.props.backend.activeTaskID != newProps.backend.activeTaskID ||
+      this.props.backend.tasks != newProps.backend.tasks ||
+      this.props.backend.day != newProps.backend.day ||
+      this.props.backend.timeline != newProps.backend.timeline;
   }
 
   watchTimeBlock(block_id : string, zoomLvl : number) :void {
@@ -149,25 +163,16 @@ export class TimelineComp extends React.PureComponent<TimelineCompProps, Timelin
   }
 
   handleTimeBlockDelete(item : DataTypes.TimelineItem) : void {
-    promiseFinally(this.props.backend.actions.deleteTimeblock(item.id), () => {
-      this.setState({
-        refresh: this.state.refresh * -1
-      });
-    });
+    this.props.backend.actions.deleteTimeblock(item.id);
 }
 
   handleStopTimer(item : DataTypes.TimelineItem) : void {
     const { backend } = this.props;
     let task : DataTypes.Task | null = backend.actions.getTaskById(item.task_id);
     if ( task ) {
-      promiseFinally(backend.actions
+      backend.actions
         .stopTask(task)
-        .then(() => backend.actions.listDayTimeline()), 
-        () => {
-          this.setState({
-            refresh: this.state.refresh * -1
-          });
-        });
+        .then(() => backend.actions.listDayTimeline());
     }
   }
 

@@ -369,9 +369,8 @@ function getUserDetails(user_id : string) : Promise<DataTypes.User> {
     return findEmployeeByUserId(user_id);
   })
   .then((result) => {
-    if ( result.length > 0 ) {
-      user.employee_name = result[0].name
-    }
+    console.log("Found employee info: ", result);
+    user.employee_name = result.name
     return user;
   })
 }
