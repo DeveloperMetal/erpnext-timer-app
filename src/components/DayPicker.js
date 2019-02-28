@@ -103,7 +103,7 @@ class DateSelect extends React.PureComponent<DateSelectProps, DateSelectState> {
       { !this.state.editing && (
         <Button
           minimal={true}
-          text={date.format("MMMM") + ", Week " + (Math.ceil(date.date() / 7)) + date.format(", YYYY")}
+          text={date.format("dddd, LL")}
           fill={true}
           onClick={onEdit}
         />

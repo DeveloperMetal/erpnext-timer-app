@@ -125,5 +125,9 @@ export type ConnectorAPI = {
     task : Task, 
     timestamp : Moment, 
     employee_name : string
-  ) : Promise<any>
+  ) : Promise<any>,
+  globalSearch(
+    text : string,
+    doctype : string,
+  ) : Promise <string[]>
 }

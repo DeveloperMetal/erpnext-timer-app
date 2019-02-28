@@ -52,7 +52,7 @@ class AddTaskForm extends React.PureComponent<Props, State> {
         project_id: this.projectComp && this.projectComp.value().id
       })
       .then(() => {
-        this.props.nav("timesheet/tasks")
+        this.props.nav("tasks")
       });
     } else {
       this.setState({

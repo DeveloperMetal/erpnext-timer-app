@@ -26,6 +26,7 @@ import * as ReactTypes from "react";
 import { BackendConsumer } from "../connectors/Data";
 import { makeCancelable, throttle, decodeHTML } from "../utils";
 import UserAvatar from "./UserAvatar";
+import ProjectFilter from "./ProjectFilter";
 
 const ActivityPredicate = (query, activity) => {
   return activity.label.toLowerCase().indexOf(query.toLowerCase()) >= 0;
@@ -244,14 +245,18 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     this.state = {
       tasks: [],
       search: "",
+      searching: false,
       onTimerStartGoto: 'timesheet',
       filteredTasks: [],
+      renderTasks: [],
+      renderId: 0,
       update: false,
       assignedOnly: true
     }
 
-    this.search = null;
     this._willUnmount = false;
+    this.searchTimeout = false;
+    this.prTimeoutID = false;
   }
 
   shouldComponentUpdate(newProps, newState) {
@@ -260,7 +265,9 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     }
 
     return this.state.update != newState.update ||
-      this.props.backend.tasks != newProps.backend.tasks;
+      this.props.backend.tasks != newProps.backend.tasks ||
+      this.props.backend.selectedProjects != newProps.backend.selectedProjects ||
+      this.state.renderTasks.length != newState.renderTasks.length;
   }
 
   updateTasks() {
@@ -279,7 +286,7 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
         this.setState({
           ...result
         }, () => {
-          this.updateSearch(this.state.search);
+          this.updateSearch(this.state.search, 0);
         });
       }
     });  }
@@ -291,11 +298,6 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
 
   componentWillUnmount() : void {
     this._willUnmount = true;
-    if ( this.search ) {
-      this.search.stop(false);
-      this.search = null;
-    }
-
   }
 
 
@@ -319,18 +321,10 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
   
   }
 
-  *throttledSearch(filter : string) : Generator<DataTypes.TaskList, DataTypes.TaskList, DataTypes.TaskList> {
-    if ( !filter ) { filter = "" }
+  sortTasks(tasks) {
+    const { backend } = this.props;
+    const { isProjectSelected } = backend.actions;
 
-    const searchResults : DataTypes.TaskList = [];
-    let search = this.search;
-    let match : boolean;
-    let batch : number = 0;
-    let nomatches : number = 0;
-
-    yield searchResults;
-
-    let tasks : DataTypes.TaskList = this.props.backend.tasks.slice(0);
     tasks.sort((a : DataTypes.Task, b : DataTypes.Task ) => {
       if ( a.is_running ) {
         return -1;
@@ -354,111 +348,107 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
       return a.weight - b.weight;
     });
 
-    for(let task of tasks) {
-      match = false;
-      if ( task.is_running ) {
-        match = true;
-      } else if ( filter ) {
-        match = `${task.project_label || ''}.${task.parent_label || ''}.${task.label || ''}.${task.description}`.toLowerCase().indexOf(filter.toLowerCase()) > -1;
-      } else {
-        match = true;
+    return tasks.filter((r) => {
+      if ( backend.selectedProjects.length == 0 ) {
+        return true;
       }
-
-      if ( this.state.assignedOnly && !(task.assigned_users.indexOf(this.props.backend.user.id) > -1) ) {
-        match = false;
-      }
-
-      if ( match ) {
-        searchResults.push(task)
-        batch++;
-        nomatches = 0;
-      } else {
-        nomatches++;
-      }
-
-      // don't freeze ui if too many consecutive items processed.
-      if ( batch > 5 ) {
-        batch = 0;
-        yield searchResults;
-      } else if ( nomatches > 25 ) {
-        nomatches = 0;
-        yield searchResults;
-      }
-
-      // search was canceled
-      if ( search && search.done ) {
-        return searchResults;
-      }
-
-      if ( this._willUnmount ) {
-        return searchResults;
-      }
-    }
-
-    return searchResults;
+      
+      return isProjectSelected(r.project_id);
+    });
   }
 
   handleSearchChange(event : any) : void {
     this.updateSearch(event.target.value);
   }
 
-  updateSearch(filter : string) : void {
-    if ( this._willUnmount ) {
-      return;
+  handleProjectsChange() : void {
+    this.updateSearch(this.state.search);
+  }
+
+  updateSearch(filter : string, timeout : number = 800) : void {
+
+    if ( this.searchTimeout ) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = false;
     }
-
-    if ( this.search ) {
-      this.search.stop(false);
-      this.search = null;
-    }
-
-    this.search = throttle(this.throttledSearch(filter), 2000, (tasks, scheduler, next) => {
-      if ( !scheduler.done && tasks ) {
-        this.setState({
-          update: !this.state.update,
-          filteredTasks: tasks
-        }, () => {
-          next();
-        });
-      } else {
-        next();
-      }
-    }, 500);
-
-    this.search.whenDone.then(({ wasCanceled }) => {
-      this.search = null;
-      if ( !this._willUnmount ) {
-        if ( !wasCanceled ) {
-          this.setState(state => { 
-            return {
-              update: !state.update
-            }
-          });
-        } else {
-          this.setState(state => {
-            return {
-              update: !state.update,
-              filteredTasks: []
-            }
-          });
-        }
-      }
-    });
 
     this.setState({
-      search: filter
+      searching: true
     });
+
+    const { backend } = this.props;
+    const { isProjectSelected, taskSearch } = backend.actions;
+
+    this.searchTimeout = setTimeout(() => {
+      return taskSearch(filter, this.state.assignedOnly?this.props.backend.user.id:"")
+        .then((result) => {
+          this.searchTimeout = false; 
+          this.setState({
+            searching: false,
+            search: filter,
+            update: !this.state.update,
+            renderTasks: [],
+            filteredTasks: this.sortTasks(this.props.backend.tasks.reduce((r, t) => {
+              if ( result.indexOf(t.id) > -1 ) {
+                r.push(t);
+              }
+              return r;
+            }, []))
+          }, () => {
+            this.setupProgressiveRendering(4);
+          });
+        });
+    }, timeout);
+    
+  }
+
+  setupProgressiveRendering(renderCount = 10) {
+    // This works by slicing rendered tasks and issue rendering
+    // after a few sets of slices at a time.
+    // The timeout length is 160ms because most people reaction time is around
+    // at 80ms. Coupled with at least 4 tasks rendered at a time we can stretch
+    // perceived rendering to look imediate while the rest of the tasks update at
+    // 160ms and avoid clogging cpu cycles.
+
+    if ( this.prTimeoutID ) {
+      clearTimeout(this.prTimeoutID);
+    }
+
+    this.prTimeoutID = setTimeout(() => {
+      this.prTimeoutID = false;
+
+      if ( this.state.renderTasks.length < this.state.filteredTasks.length ) {
+        this.setState((oldState) => {
+          const startIdx = oldState.renderTasks.length;
+          const maxCount = oldState.filteredTasks.length - oldState.renderTasks.length;
+          const insertCount = renderCount > maxCount?maxCount:renderCount;
+          const insertSlice = oldState.filteredTasks.slice(startIdx, startIdx + insertCount);
+
+          return {
+            progressiveRendering: true,
+            renderTasks: [...oldState.renderTasks, ...insertSlice]
+          };
+        }, () => {
+          if ( this.state.progressiveRendering ) {
+            this.setupProgressiveRendering(renderCount);
+          }
+        })
+      }
+
+    }, 160);
   }
 
   handleAssignedChange(event : any) : void {
-    if ( this.search ) {
-      this.search.stop(false);
-      this.search = null;
+    if ( this.prTimeoutID ) {
+      clearTimeout(this.prTimeoutID);
     }
 
     this.setState({
+      searching: true,
       assignedOnly: event.target.checked?true:false,
-      filteredTasks: []
+      update: !this.state.update,
+      renderTasks: [],
+      progressiveRendering: false
     }, () => {
       this.updateSearch(this.state.search)
     });
@@ -468,6 +458,7 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
 
     const handleSearchChange = (event : any) => this.handleSearchChange(event)
     const handleAssignedChange = (event : any) => this.handleAssignedChange(event)
+    const handleProjectsChange = () => this.handleProjectsChange();
 
     const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any>  => {
       return this.onStartTask(task, activity);
@@ -477,14 +468,14 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     }
 
     let searchLeftIcon = "search";
-    if ( this.search && !this.search.done ) {
+    if ( this.state.searching ) {
       searchLeftIcon = (<Spinner size={15} intent={Intent.PRIMARY} className="small-spinner"/>);
     }
 
     return <div className="page page-tasks">
       <div className="page-title">Tasks</div>
-      <div className="page-toolbar">
-        <ControlGroup className="ctrl-flex">
+      <div className="page-toolbar row">
+        <ControlGroup className="ctrl-flex col-md-6 col-sm-12">
           <InputGroup 
             fill
             autoFocus
@@ -501,10 +492,16 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
             label="Assigned" 
             onChange={handleAssignedChange} />
         </ControlGroup>
+        <ControlGroup className="ctrl-flex col-md-6 col-sm-12">
+          <ProjectFilter 
+            backend={this.props.backend} 
+            onChange={handleProjectsChange}
+            />
+        </ControlGroup>
       </div>
       <div className="page-content">
         <div className="task-list">
-            { this.state.filteredTasks.map((t, k) => 
+            { this.state.renderTasks.map((t, k) => 
                 <TaskListItem 
                   key={`task-${t.id}`} 
                   task={t}

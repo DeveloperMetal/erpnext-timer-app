@@ -200,6 +200,17 @@ class FrappeRest {
 
     return this.resources[resource];
   }
+
+  call(method : string, options : any) : any {
+    return axios({
+      method: options.method || 'get',
+      url: `${this.host}`,
+      data: {
+        cmd: method,
+        ...options.args
+      }
+    });
+  }
 }
 
 class FrappeApi {
@@ -369,7 +380,6 @@ function getUserDetails(user_id : string) : Promise<DataTypes.User> {
     return findEmployeeByUserId(user_id);
   })
   .then((result) => {
-    console.log("Found employee info: ", result);
     user.employee_name = result.name
     return user;
   })
@@ -845,7 +855,7 @@ const API : DataTypes.ConnectorAPI = {
       });
   },
 
-  newTask(task : DataTypes.Task) : Promise<any> {
+  newTask(task : DataTypes.Task, assigned_user : string) : Promise<any> {
     return frappe.resource("Task")
       .create({
         project: task.project_id,
@@ -853,8 +863,39 @@ const API : DataTypes.ConnectorAPI = {
         description: task.description
       })
       .then((result : any) => {
-        return result.name;
+
+        return frappe.call("frappe.desk.form.assign_to.add", {
+          method: "post",
+          args: {
+            assign_to: assigned_user,
+            myself: 1,
+            description: `New Task: ${task.description}`,
+            notify: 0,
+            priority: 'Medium',
+            doctype: 'Task',
+            name: result.data.name,
+            bulk_assign: false,
+            re_assign: false
+          }
+        })
+        .then(() => {
+          // just forward through the doctype name
+          return result.name;
+        })
       });
+  },
+
+  taskSearch(search : string, assigned_user : string) : Promise<string[]> {
+    return frappe.call("bloomstack_timer.api.taskSearch", {
+      method: "post",
+      args: {
+        search,
+        assigned_user
+      }
+    })
+    .then((result) => {
+      return result.data.message;
+    });
   },
 
   getUserDetails(user_id : string) : Promise<User> {

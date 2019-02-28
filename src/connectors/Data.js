@@ -66,8 +66,11 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     // TODO: Change the require() type of import to another connector in the future
     //       This just shows how easy it would be to replate the backend if necessary.
     this.connector = ErpNext;
+    this.logoutGuardID = null;
+    this.idleID = null;
 
     this.state = {
+      hasInitialContent: false,
       loggedIn: false,
       attemptingLogin: false,
       idleTimeout: moment.duration(10, 'minutes'),
@@ -89,6 +92,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       userMessages: [],
       activities: [],
       projects: [],
+      selectedProjects: [],
       actions: {
         ...bindCallbacks(this, [
           "throwError",
@@ -105,9 +109,15 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "updateTimelineBlock",
           "setCurrentDate",
           "newTask",
+          "taskSearch",
           "getTaskById",
           "getUserDetails",
-          "deleteTimeblock"
+          "deleteTimeblock",
+          "isProjectSelected",
+          "getSelectedProjects",
+          "clearSelectedProjects",
+          "setSelectedProject",
+          "unsetSelectedProject"
         ]),
       }
     }
@@ -117,12 +127,26 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     this.idleID = setInterval(() => {
       this.updateIdleTimer();
     }, 2000);
+
+    this.logoutGuardID = setInterval(() => {
+      // while we have a user id, just ping the backend to keep session from
+      // timing out.
+      if ( this.state.user && this.state.user.id ) {
+        this.getUserDetails(this.state.user.id)
+          .catch((err) => {
+            console.log(err);
+            this.logout();
+          })
+      }
+    }, 60000 * 5)
   }
 
   componentWillUnmount() {
     if ( !!this.idleID ) {
       clearInterval(this.idleID);
+      clearInterval(this.logoutGuardID);
       this.idleID = null;
+      this.logoutGuardID = null;
     }
   }
 
@@ -151,6 +175,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
     this.setState((prevState : DataTypes.State) => {
       return { userMessages: [...prevState.userMessages, err] };
     }, () => {
+      console.log(err);
+      console.log(err.code);
       if ( typeof done === "function" ) {
         done(err);
       }
@@ -175,6 +201,10 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         usr: "",
         pwd: "",
         host: ""
+      },
+      user: {
+        employee_name: "",
+        id: ""
       }
     })
   }
@@ -289,11 +319,15 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
   }
 
   newTask(task : DataTypes.Task) {
-    return this.connector.newTask(task)
+    return this.connector.newTask(task, this.state.user.id)
       .then(() => {
         return this.listTasks();
       })
       .catch(err => this.throwError(err));
+  }
+
+  taskSearch(search : string, assigned_user : string) : Promise<string[]> {
+    return this.connector.taskSearch(search, assigned_user);
   }
 
   updateIdleTimer() {
@@ -368,7 +402,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           activeTaskID,
           projects,
           activities,
-          tasks
+          tasks,
+          hasInitialContent: true
         }, () => {
           resolve();
         });
@@ -430,6 +465,43 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           .stopTask(task, timestamp, this.state.user.employee_name))
       .then(() => this.listTasks())
       .catch(err => this.throwError(err));
+  }
+
+  isProjectSelected( id : string ) {
+    return this.state.selectedProjects.indexOf(id) > -1;
+  }
+
+  getSelectedProjects() : DataTypes.Project[] {
+    return this.state.projects.filter((p) => this.state.selectedProjects.indexOf(p.id) > -1);
+  }
+
+  setSelectedProject( id : string ) : Promise<any> {
+    // lets make sure this id exists in our projects cache
+    if ( this.state.projects.findIndex((p) => p.id === id) > -1 ) {
+      return new Promise((resolve) => {
+        this.setState((state) => ({
+          selectedProjects: [...state.selectedProjects, id].sort()
+        }), resolve);
+      });
+    }
+
+    return Promise.reject(new InvalidOperation("Project id not found"));
+  }
+
+  unsetSelectedProject( id : string ) : Promise<any> {
+    return new Promise((resolve) => {
+      this.setState((state) => ({
+        selectedProjects: state.selectedProjects.filter((pid) => pid !== id).sort()
+      }), resolve);
+    })
+  }
+
+  clearSelectedProjects() : Promise<any> {
+    return new Promise((resolve) => {
+      this.setState({
+        selectedProjects: []
+      }, resolve)
+    });
   }
 
   render() {
