@@ -1,5 +1,21 @@
 [
     {
+        "version": "1.3.0",
+        "date": "2019-02-28",
+        "message": "Search performance and usability fixes and additions",
+        "added": [
+            "Added a project filter to task view. You can now select multiple projects to filter by.",
+            "Now app defaults new tasks to be self assigned",
+            "Added natural text search(through global search) to tasks. Fields must be enabled for global search for this to work on the server.",
+            "Added check to see if user still has a valid session and display login screen if not."
+        ],
+        "changed": [
+            "Refactored task rendering to reduce complexity and improve perfomance. Now tasks are rendered progressively to avoid jitter and cpu thrashing.",
+            "Fixed issue where after creating a new task the app would display an empty view",
+            "Fixed issue where frappe's auto log off would cause query error. App will now actively try to keep a seesion open by pinging server over a few minutes interval while the app is running."
+        ]
+    },
+    {
         "version": "1.2.3",
         "date": "2019-02-12",
         "message": "Idle time and Bug fixes",
