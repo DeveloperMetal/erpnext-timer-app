@@ -1,5 +1,29 @@
 [
     {
+        "version": "1.4.0",
+        "date": "2019-03-07", 
+        "message": "Howdie folks! on this update we have new task search tools and performance improvements on rendering and server handling of the data",
+        "added": [
+            "Added a status filter! You can now multiselect and filter status",
+            "Added remote requests management to improve UI feel and simplify remote requests and actions",
+            "Added task status dropdown to change the task status on an individual basis",
+            "Added always on top toggle option in settings page.",
+            "Timeline last zoom level now stored!"
+        ], 
+        "changed": [
+            "Refactored task search UI to accomodate project and status filters.",
+            "Moved assigned toggle next to the smaller status filter",
+            "Task search UI is responsive and adjusts to app window width",
+            "Task cards were also refactored to accomodate status, time and play/stop buttons",
+            "Task description is now hidden by default, you can open it by clicking the task title",
+            "Task parent and project names were moved to the bottom of the task card",
+            "Multiple rendering improvement and function caching done to improve rendering speed on large lists",
+            "Refactored task common menu to include it on timeline and task view to maximize code reuse.",
+            "Fixed but where uploaded avaters were not displayed for non gravatar users",
+            "Small timeline block layout changes to accomodate new common task menu component"
+        ]
+    },
+    {
         "version": "1.3.0",
         "date": "2019-02-28",
         "message": "Search performance and usability fixes and additions",

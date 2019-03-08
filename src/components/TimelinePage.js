@@ -3,14 +3,15 @@
 // Third party components
 import React from "react";
 import { Timeline, ZOOMLEVELS } from "bloom-day-timeline";
-import { ButtonGroup, Button, Popover, Menu, MenuItem, Intent } from "@blueprintjs/core";
-import moment from "moment"
-import { promiseFinally } from "../utils";
+import { ButtonGroup, Button, Popover, Menu, MenuItem, Intent, Alignment } from "@blueprintjs/core";
+import moment from "moment";
+import { promiseFinally, mainProcessAPI } from "../utils";
 
 // Components
 import { BackendConsumer } from "../connectors/Data";
 import { Timer } from "./Timer";
 import { DayPicker } from "./DayPicker";
+import TaskCommonActionsMenu from "./TaskCommonActionsMenu";
 
 // flow types
 import * as DataTypes from "../connectors/Data.flow";
@@ -26,48 +27,41 @@ const TimeBlockContentRenderer = (item : DataTypes.TimelineItem) => {
     onStopTimer, 
     onOpenBrowser } = item;
 
-  const contextMenu = <Menu>
-    <MenuItem 
-      icon="time" 
-      text="Open Timesheet on browser"
-      onClick={() => onOpenBrowser?onOpenBrowser(`Doctype://Form/Timesheet/${timesheet_id}`):'' }
-    />
-    <MenuItem 
-      icon="annotation" 
-      text="Open Task on browser"
-      onClick={() => onOpenBrowser?onOpenBrowser(`Doctype://Form/Task/${task_id}`):''}
-    />
-    { is_running && ( <MenuItem 
-      icon="stop" 
-      text="Stop Timer" 
-      intent={Intent.WARNING} 
-      onClick={() => onStopTimer?onStopTimer(item):''}  /> ) 
-    }
-    <Menu.Divider />
-    <MenuItem 
-      icon="delete" 
-      text="Delete" 
-      intent={Intent.DANGER} 
-      onClick={() => onDelete?onDelete(item):''} />
-  </Menu>;
-
   return <React.Fragment>
     <div className="top-bar">
-      <div className="start">{start.format('h:mm a')}</div>
-      <div className="title">{task_label}</div>
-      <div className="end">
-        <Timer key={`timer-${task_id}`} time={end} started={item.is_running || false} />
-        <Popover 
-          content={contextMenu} 
-          className="bp3-dark"
-          lazy={true}
-          usePortal={true}
-          hasBackdrop={true}
+      <ButtonGroup fill>
+        <Button className="start" minimal small>{start.format('h:mm a')}</Button>
+        <Button minimal small fill />
+        <Button className="end" minimal small><Timer key={`timer-${task_id}`} time={end} started={item.is_running || false} /></Button>
+        <TaskCommonActionsMenu 
+          task_id={ task_id } 
+          timesheet_id={ timesheet_id }
+          onOpenBrowser={onOpenBrowser} 
+          icon="cog"
+          buttonProps={{
+            minimal: true,
+            small: true,
+            intent: is_running?Intent.PRIMARY:Intent.DEFAULT
+          }}
         >
-          <Button intent={is_running?Intent.PRIMARY:Intent.NONE}  icon="cog" minimal small/>
-        </Popover>
-      </div>
+          { is_running && ( <MenuItem 
+            icon="stop" 
+            text="Stop Timer" 
+            intent={Intent.WARNING} 
+            onClick={() => onStopTimer?onStopTimer(item):''}  /> ) 
+          }
+          
+          { is_running && ( <Menu.Divider /> ) }
+
+          <MenuItem 
+            icon="delete" 
+            text="Delete" 
+            intent={Intent.DANGER} 
+            onClick={() => onDelete?onDelete(item):''} />
+        </TaskCommonActionsMenu>
+      </ButtonGroup>
     </div>
+    <Button fill minimal small alignText={Alignment.LEFT} className="title">{task_label}</Button>
     <div className="content">{task_description}</div>
   </React.Fragment>
 }
@@ -140,6 +134,16 @@ export class TimelineComp extends React.Component<TimelineCompProps, TimelineCom
 
     backend.actions.listDayTimeline();
     this.findWatchActiveSlice();
+
+    mainProcessAPI("getUserSettings", [
+      "timelineZoom"
+    ])
+    .then((result) => {
+      console.log(result);
+      this.setState({
+        zoom: result.timelineZoom
+      });
+    });
   }
 
   componentDidUpdate() {
@@ -178,6 +182,11 @@ export class TimelineComp extends React.Component<TimelineCompProps, TimelineCom
 
   zoom(val : number) : void {
     if ( val != this.state.zoom ) {
+      mainProcessAPI("setUserSettings", { "timelineZoom": val})
+        .catch((err) => {
+          console.error(err);
+        });
+  
       this.setState({
         zoom: val
       });

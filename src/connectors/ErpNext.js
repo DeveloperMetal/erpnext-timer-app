@@ -168,7 +168,7 @@ function parseFrappeErrorResponse(err : any) : ?DataTypes.ErrorInfo {
     message = "Unexpected error";
   }
 
-  errorInfo = Object.assign({}, { message, server_messages, remoteTrace }, errorInfo);
+  errorInfo = Object.assign({}, { message, server_messages, remoteTrace, statusText: err.statusText || null, status: err.status || null }, errorInfo);
   console.error(errorInfo.message);
   console.dir(errorInfo);
   return errorInfo;
@@ -308,6 +308,8 @@ class FrappeResource {
   }
 
   _errorFactory(err : any, errorClass : any) : void {
+    let errInst = null;
+
     if (typeof err.response.data !== undefined) {
       let errorInfo;
       try {
@@ -321,10 +323,17 @@ class FrappeResource {
         message = errorInfo.message;
       }
       
-      throw new errorClass(message || err.toString(), errorInfo || {});
+      errInst = new errorClass(message || err.toString(), errorInfo || {});
+
+      if ( errorInfo ) {
+        errInst.status = errorInfo.status;
+        errInst.statusText = errorInfo.statusText;
+      }
+    } else {
+      errInst =  new errorClass(err.toString(), {}, err);
     }
 
-    throw new errorClass(err.toString(), {}, err);
+    throw errInst;
   }
 }
 
@@ -374,6 +383,11 @@ function getUserDetails(user_id : string) : Promise<DataTypes.User> {
         fullname: `${result[0].first_name} ${result[0].last_name}`,
         id: result[0].name
       }
+
+      if ( user.avatar && user.avatar[0] === '/' ) {
+        user.avatar = frappe.host + '//' + user.avatar;
+      }
+
     } else {
       throw new Error(`User ${user_id} not found`);
     }
@@ -885,17 +899,32 @@ const API : DataTypes.ConnectorAPI = {
       });
   },
 
-  taskSearch(search : string, assigned_user : string) : Promise<string[]> {
+  setTaskStatus(task : DataTypes.Task, status : string) : Promise<any> {
+    return frappe.resource("Task").update(
+      task.id, {
+      status
+    });
+  },
+
+  taskSearch(search : string, assigned_user : string, status : string[]) : Promise<string[]> {
     return frappe.call("bloomstack_timer.api.taskSearch", {
       method: "post",
       args: {
         search,
-        assigned_user
+        assigned_user,
+        status: status.join(',')
       }
     })
     .then((result) => {
       return result.data.message;
     });
+  },
+
+  listTaskStatuses() : Promise<string[]> {
+    return frappe.resource("DocType/Task").read()
+      .then((meta) => {
+        return meta.fields.filter((f) => f.fieldname === 'status')[0].options.split("\n");
+      })
   },
 
   getUserDetails(user_id : string) : Promise<User> {

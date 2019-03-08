@@ -72,7 +72,7 @@ init.then(() => {
       },
       show: false,
       autoHideMenuBar : true,
-      alwaysOnTop: true
+      alwaysOnTop: userSettings.alwaysOnTop
     });
 
     mainWindowState.manage(mainWindow);
@@ -332,6 +332,10 @@ init.then(() => {
 
         Object.keys(request.args[0]).forEach((key) => {
           userSettings[key] = request.args[0][key];
+
+          if ( key === 'alwaysOnTop' ) {
+            mainWindow.setAlwaysOnTop(request.args[0][key]);
+          }
         })
 
         event.sender.send(request.response_channel, true);

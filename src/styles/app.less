@@ -268,20 +268,24 @@ html, body, #root {
                         cursor: default;
                     }
 
+                    .title {
+                        flex: 1 1 auto;
+                        font-weight: bolder;
+                        padding: 0 .5em;
+                    }
+
                     .top-bar {
                         display: flex;
                         flex-direction: row;
                         margin-top: 4px;
 
+                        .bp3-button.bp3-small, .bp3-small .bp3-button {
+                            min-height: 12px;
+                        }
+
                         .start {
                             flex: 0 0 auto;
                             padding-left: .5em;
-                        }
-
-                        .title {
-                            flex: 1 1 auto;
-                            font-weight: bolder;
-                            padding: 0 .5em;
                         }
 
                         .end {
@@ -349,6 +353,8 @@ html, body, #root {
         .related {
             display: flex;
             flex-direction: row;
+            margin-top: 5px;
+            
             .bp3-button-text {
                 font-size: .8em;
                 font-weight: lighter;
@@ -369,6 +375,23 @@ html, body, #root {
             }
         }
 
+        .task-header {
+            display: flex;
+            flex-direction: row;
+
+            .subject {
+                font-size: 1.1em;
+                font-weight: bolder;
+            }
+        }
+
+        .task-tools {
+            display: flex;
+            flex-direction: row;
+
+            margin: 5px 0;
+        }
+
         .task-content {
             display: flex;
             flex-direction: row;
@@ -377,10 +400,6 @@ html, body, #root {
                 flex: 1 1 auto;
                 overflow: overlay;
 
-                .subject {
-                    font-size: 1.2em;
-                    font-weight: bolder;
-                }
 
                 .description {
                     word-break: normal;
@@ -423,7 +442,7 @@ html, body, #root {
             }
         }
 
-        &:hover {
+        &.expanded {
             .task-content {
                 .task-info {
                     .description {
@@ -548,6 +567,15 @@ html, body, #root {
     & > .bp3-popover-target {
         display: block;
     }
+}
+
+.bp3-tag-input .bp3-input-ghost {
+    width: 10px; /* minimize ghost input footprint on small filters so we don't spill on next line */
+}
+
+.popover-md-height .bp3-popover-content>div {
+    max-height: 50vh;
+    overflow: auto;
 }
 
 .vertical-center {

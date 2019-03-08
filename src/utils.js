@@ -154,3 +154,52 @@ export function decodeHTML(html) {
   el.innerHTML = html;
   return el.value;
 }
+
+export class RequestManager {
+  constructor(component) {
+    this.component = component;
+    this.component.state.openRequests = [];
+    this.willUnmount = false;
+  }
+
+  newRequest(promise) {
+    let cancelable = makeCancelable(promise);
+    const finallyAction = (r, err) => {
+      if ( !this.willUnmount ) {
+        this.component.setState((oldState) => {
+          openRequests: oldState.openRequests.filter((p) => p !== cancelable);
+        });
+      }
+
+      // rethrow to let client code handle errors while we keep our pending requests list
+      // clean
+      if ( err && !!!err.isCanceled ) {
+        throw err;
+      }
+
+      return r;
+    };
+
+    this.component.setState((oldState) => {
+      return {
+        openRequests: [...oldState.openRequests, cancelable]
+      }
+    }, () => {
+      cancelable.promise.then(finallyAction).catch((err) => finallyAction(null, err));
+    });
+
+    return cancelable;
+  }
+
+  cleanup(willUnmount) {
+    this.component.state.openRequests.forEach((p) => p.cancel());
+
+    if ( willUnmount !== undefined ) {
+      this.willUnmount = willUnmount;
+    }
+
+    if ( !this.willUnmount ) {
+      this.component.setState({openRequests: []});
+    }
+  }
+}

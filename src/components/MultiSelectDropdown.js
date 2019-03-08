@@ -10,13 +10,15 @@ export default class ItemFilterDropdown extends React.Component {
   
     this.renderers = {
       renderItem: this.renderItem.bind(this),
-      renderTag: this.renderItem.bind(this)
+      renderTag: this.renderTag.bind(this)
     }
 
     this.handlers = {
+      handleItemPredicate: this.itemPredicate.bind(this),
       handleItemSelect: this.handleItemSelect.bind(this),
       handleTagRemove: this.handleTagRemove.bind(this),
-      handleClear: this.handleClear.bind(this)
+      handleClear: this.handleClear.bind(this),
+      handleIsItemSelected: this.isItemSelected.bind(this)
     }
   }
 
@@ -25,22 +27,34 @@ export default class ItemFilterDropdown extends React.Component {
   }
 
   getItemKey(item) {
-    return item.id;
+    throw "getItemKey Not Implemened";
   }
 
   getItemText(item) {
-    return item.label;
+    throw "getItemText Not Implemened";
   }
 
-  setSelectedItem(item) {
+  getPlaceholderText() {
+    return "Search...";
+  }
+
+  itemPredicate(query, item) {
+    return item.toLowerCase().indexOf(query.toLowerCase()) > -1;
+  }
+
+  isItemSelected(item) {
+    return this.getSelectedItems().indexOf(item) > -1;
+  }
+
+  async setSelectedItem(item) {
     return Promise.reject("Not Implemented");
   }
 
-  unsetSelectedItem(item) {
+  async unsetSelectedItem(item) {
     return Promise.reject("Not Implemented");
   }
 
-  clearSelectedItems() {
+  async clearSelectedItems() {
     return Promise.reject("Not Implemented");
   }
 
@@ -67,13 +81,15 @@ export default class ItemFilterDropdown extends React.Component {
   getPopoverProps() {
     return Object.assign({
       usePortal: true,
-      className: "popover-wrapper-fill"
+      className: "popover-wrapper-fill",
+      portalProps: {
+        className: "popover-md-height"
+      }
     }, this.props.popoverProps || {});
   }
 
   renderItem( item, { modifiers, handleClick } ) {
-    const { backend } = this.props;
-    const { isItemSelected } = backend.actions;
+    const { handleIsItemSelected } = this.handlers;
 
     if ( !modifiers.matchesPredicate) {
       return null;
@@ -82,7 +98,7 @@ export default class ItemFilterDropdown extends React.Component {
     return (
       <MenuItem
         active={modifiers.active}
-        icon={ this.isItemSelected(item) ? 'tick' : 'blank' }
+        icon={ handleIsItemSelected(item) ? 'tick' : 'blank' }
         key={this.getItemKey(item)}
         onClick={handleClick}
         text={this.getItemText(item)}
@@ -115,7 +131,7 @@ export default class ItemFilterDropdown extends React.Component {
   }
 
   render() {
-    const { handleItemSelect } = this.handlers;
+    const { handleItemSelect, handleItemPredicate } = this.handlers;
     const { renderTag, renderItem } = this.renderers;
     const selectedItems = this.getSelectedItems();
 
@@ -123,6 +139,7 @@ export default class ItemFilterDropdown extends React.Component {
       <MultiSelect 
         itemRenderer = {renderItem}
         className="ctrl-field ctrl-flex-auto"
+        itemPredicate = { handleItemPredicate }
         noResults = {<MenuItem disabled={true} text="No results." />}
         onItemSelect = {handleItemSelect}
         tagRenderer = {renderTag}

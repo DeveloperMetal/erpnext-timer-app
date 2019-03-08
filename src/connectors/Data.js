@@ -89,6 +89,8 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       day: moment(),
       timeline: [],
       tasks: [],
+      taskStatuses: [],
+      taskStatusFilter: [],
       userMessages: [],
       activities: [],
       projects: [],
@@ -102,6 +104,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "startTask",
           "stopTask",
           "stopActiveTask",
+          "setTaskStatus",
           "dismissMessage",
           "userMessage",
           "listDayTimeline",
@@ -117,7 +120,12 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
           "getSelectedProjects",
           "clearSelectedProjects",
           "setSelectedProject",
-          "unsetSelectedProject"
+          "unsetSelectedProject",
+          "setTaskStatusFilter",
+          "unsetTaskStatusFilter",
+          "clearTaskStatusFilter",
+          "getAllTaskStatuses",
+          "getTaskStatusFilters"
         ]),
       }
     }
@@ -159,6 +167,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
   }
 
   throwError(err : ConnectorError, done? : (Error) => void) {
+    console.log("---------------")
     console.error(err);
     trackError(err);
 
@@ -181,6 +190,10 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         done(err);
       }
     });
+
+    if ( !done ) {
+      throw err;
+    }
   }
 
   userMessage(message : string, done : () => void) {
@@ -326,8 +339,18 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
       .catch(err => this.throwError(err));
   }
 
+  setTaskStatus(task : DataTypes.Task, status : string ) : Promise<any> {
+    return this.connector.setTaskStatus(task, status)
+      .then(() => {
+        return this.listTasks();
+      })
+      .catch(err => this.throwError(err));
+  }
+
   taskSearch(search : string, assigned_user : string) : Promise<string[]> {
-    return this.connector.taskSearch(search, assigned_user);
+    return this.connector
+      .taskSearch(search, assigned_user, this.state.taskStatusFilter)
+      .catch(err => this.throwError(err));
   }
 
   updateIdleTimer() {
@@ -365,17 +388,20 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
   }
 
   listTasks() : Promise<void> {
+
     // always fetch list of available activities, just in case
     // we have new ones while app is running
     return Promise.all([
+      this.connector.listTaskStatuses(),
       this.connector.listProjects(),
       this.connector.listActivities(),
       this.connector.listTasks(this.state.user.employee_name)
     ])
     .then(results => {
-      let projects = results[0];
-      let activities = results[1];
-      let tasks = results[2];
+      let taskStatuses = results[0];
+      let projects = results[1];
+      let activities = results[2];
+      let tasks = results[3];
       let activeTaskID = false;
       tasks.sort((a, b) => (a.is_running?1:0) < (b.is_running?1:0)? 1:0);
 
@@ -399,6 +425,7 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
 
       return new Promise((resolve) => {
         this.setState({
+          taskStatuses,
           activeTaskID,
           projects,
           activities,
@@ -502,6 +529,42 @@ export class BackendProvider extends React.PureComponent<{}, DataTypes.State> {
         selectedProjects: []
       }, resolve)
     });
+  }
+
+  setTaskStatusFilter( status : string ) : Promise<any> {
+    return new Promise((resolve) => {
+      let newList = this.state.taskStatusFilter.slice(0);
+      if ( newList.indexOf(status) == -1 ) {
+        newList.push(status);
+      }
+      this.setState({
+        taskStatusFilter: newList
+      }, resolve);
+    });
+  }
+
+  unsetTaskStatusFilter( status : string ) : Promsie<any> {
+    return new Promise((resolve) => {
+      this.setState({
+        taskStatusFilter: this.state.taskStatusFilter.filter((s) => s !== status)
+      }, resolve);
+    })
+  }
+
+  clearTaskStatusFilter() : Promise<any> {
+    return new Promise((resolve) => {
+      this.setState({
+        taskStatusFilter: []
+      }, resolve);
+    })
+  }
+
+  getAllTaskStatuses() {
+    return this.state.taskStatuses;
+  }
+
+  getTaskStatusFilters() {
+    return this.state.taskStatusFilter;
   }
 
   render() {

@@ -5,8 +5,9 @@ import { MultiSelect } from '@blueprintjs/select';
 import MultiSelectDropdown from './MultiSelectDropdown';
 
 class TaskStatusFilterDropdown extends MultiSelectDropdown {
+  
   renderTag(item) {
-    throw item;
+    return item
   }
 
   getItemKey(item) {
@@ -17,21 +18,25 @@ class TaskStatusFilterDropdown extends MultiSelectDropdown {
     return item;
   }
 
-  setSelectedItem(item) {
+  getPlaceholderText() {
+    return "Filter by Status..."
+  }
+
+  async setSelectedItem(item) {
     const { backend } = this.props;
     const { setTaskStatusFilter } = backend.actions;
 
     return setTaskStatusFilter(item);
   }
 
-  unsetSelectedItem(item) {
+  async unsetSelectedItem(item) {
     const { backend } = this.props;
     const { unsetTaskStatusFilter } = backend.actions;
 
     return unsetTaskStatusFilter(item);
   }
 
-  clearSelectedItems() {
+  async clearSelectedItems() {
     const { backend } = this.props;
     const { clearTaskStatusFilter } = backend.actions;
     return clearTaskStatusFilter();
@@ -48,6 +53,8 @@ class TaskStatusFilterDropdown extends MultiSelectDropdown {
     const { getTaskStatusFilters } = backend.actions;
     return getTaskStatusFilters();
   }
+
+
 }
 
 export default function TaskStatusFilter(props) {

@@ -1,11 +1,26 @@
 // @flow
 
 import { ipcRenderer } from 'electron';
-import { mainProcessAPI } from "../utils";
+import { mainProcessAPI, RequestManager } from "../utils";
 
 // Third party
 import React from "react";
-import { ControlGroup, Switch, InputGroup, Card, Button, Tag, MenuItem, Intent, Spinner } from "@blueprintjs/core";
+import { 
+  Alignment,
+  Button, 
+  Card, 
+  ControlGroup, 
+  Icon,
+  InputGroup, 
+  Intent, 
+  Menu, 
+  MenuItem, 
+  Popover,
+  Switch, 
+  Spinner ,
+  Tag,
+  ButtonGroup
+} from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import  classNames from 'classnames';
@@ -27,6 +42,8 @@ import { BackendConsumer } from "../connectors/Data";
 import { makeCancelable, throttle, decodeHTML } from "../utils";
 import UserAvatar from "./UserAvatar";
 import ProjectFilter from "./ProjectFilter";
+import TaskStatusFilter from "./TaskStatusFilter";
+import TaskCommonActionsMenu from "./TaskCommonActionsMenu";
 
 const ActivityPredicate = (query, activity) => {
   return activity.label.toLowerCase().indexOf(query.toLowerCase()) >= 0;
@@ -44,6 +61,44 @@ const ActivityRenderer = (activity, { handleClick, modifiers }) => {
   />
 }
 
+const TaskStatusRenderer = (status, { handleClick, modifiers}) => {
+  if (!modifiers.matchesPredicate) {
+    return null;
+  }
+
+  return <MenuItem
+    key={status}
+    onClick={handleClick}
+    text={status} />
+}
+
+export function TaskStatusSelect(props) {
+
+  const statusMenu = (
+    <Menu>
+      { props.allStatuses.map((s) => (
+        <MenuItem
+          key={s}
+          onClick={() => props.onChange(s)}
+          text={s}
+        />
+      ))}
+    </Menu>
+  );
+
+  return (
+    <Popover 
+      content={statusMenu} 
+      className="bp3-dark"
+      lazy={true}
+      usePortal={true}
+      hasBackdrop={true}
+    >
+      <Button text={props.status} large alignText={Alignment.LEFT} />
+    </Popover>
+  )
+}
+
 export class TaskListItem extends React.Component<TaskListItemProps, TaskListItemState> {
 
   timerId : ?IntervalID;
@@ -55,23 +110,40 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     this.state = {
       from_time: props.task.is_running?props.task.last_open_timer:null,
       to_time: null,
-      waiting: false
+      expanded: false
     }
     this.timerId = null; 
+
+    this.requestManager = new RequestManager(this);
+
+    this.handlers = {
+      handleOnClick: this.handleOnClick.bind(this),
+      handleOpenBrowser: this.handleOpenBrowser.bind(this),
+      handleTaskStatusChangeClick: this.handleTaskStatusChangeClick.bind(this),
+      onPlayClick: this.onPlayClick.bind(this),
+      onStopClick: this.onStopClick.bind(this)
+    }
+
+    this._willUnmount = false;
   }
 
   shouldComponentUpdate(newProps : TaskListItemProps, newState : TaskListStateProps) : boolean {
 
+    // happens when component is reused to display another task,
+    // we need to clean up timers and requests.
     if ( newProps.task.id != this.props.task.id ) {
       this.stopTimer();
+      this.requestManager.cleanup();
     }
 
     return this.props.to_time != newProps.to_time || 
     this.props.from_time != newProps.from_time || 
-    this.props.waiting != newProps.waiting ||
     this.props.task.id != newProps.task.id ||
     this.props.task.is_running != newProps.task.is_running ||
-    this.state.to_time != newState.to_time;
+    this.props.task.status != newProps.task.status ||
+    this.state.to_time != newState.to_time ||
+    this.state.expanded != newState.expanded ||
+    this.state.openRequests.length != newState.openRequests.length;
   }
 
   setupTimer() {
@@ -98,6 +170,7 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
   }
 
   componentDidMount() {
+    this._willUnmount = false;
     if ( this.props.task.is_running && !this.timerId ) {
       this.onTimerStarted();
     } else if ( !this.props.task.is_running ) {
@@ -114,18 +187,70 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
   }
 
   componentWillUnmount() {
+    this._willUnmount = true;
     if ( this.timerId ) {
       clearInterval(this.timerId);
     }
 
-    if ( this.playPromise ) {
-      this.playPromise.cancel();
-    }
+    this.requestManager.cleanup(true);
   }
 
+  handleOnClick() {
+    this.setState((oldState) => ({
+      expanded: !!!oldState.expanded
+    }));
+  }
+
+  handleOpenBrowser(url : string) : void {
+    window.open(url);
+  }
+
+  handleTaskStatusChangeClick(status : string) : void {
+    const { backend, task, onTaskUpdated } = this.props;
+    const { setTaskStatus } = backend.actions;
+    this.requestManager.newRequest(setTaskStatus(task, status))
+      .promise.then(() => onTaskUpdated());
+  }
+
+  onPlayClick(activity) {
+    const { onStartTask, task } = this.props;
+    this.requestManager
+      .newRequest(onStartTask(task, activity, this.onTimerStarted)).promise
+      .catch((err) => {
+        // there should be no errors happening here
+        // this promise is here to handle the spinner display
+        if ( !!!err.isCanceled ) {
+          throw err;
+        }
+    });
+  }
+
+  onStopClick() {
+    const { onStopTask, task } = this.props;
+    this.requestManager
+      .newRequest(onStopTask(task)).promise
+      .catch((err) => {
+        // there should be no errors happening here
+        // this promise is here to handle the spinner display
+        if ( !!!err.isCanceled ) {
+          throw err;
+        }
+      });
+  }
+
+
   render() {
-    const { onStartTask, onStopTask, task } = this.props;
+    const { onStartTask, onStopTask, task, backend } = this.props;
     const tags = [];
+    const {
+      handleOnClick, 
+      handleOpenBrowser, 
+      handleTaskStatusChangeClick,
+      onPlayClick, 
+      onStopClick
+    } = this.handlers;
+    const waiting = this.state.openRequests.length > 0;
+
     if ( task.tags ) {
       task.tags.forEach(tag => {
         tag = tag.trim();
@@ -133,37 +258,6 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
           tags.push(<Tag key={tag} minimal>{tag}</Tag>);
         }
       })
-    }
-    const onPlayClick = (activity) => {
-      this.setState({
-        waiting: true,
-      }, () => {
-        this.playPromise = makeCancelable(onStartTask(task, activity, this.onTimerStarted));
-        this.playPromise.promise
-          .then(() => {
-            this.setState({ waiting: false })
-          })
-          .catch(() => {
-            // there should be no errors happening here
-            // this promise is here to handle the spinner display
-          });
-      });
-      
-    }
-    const onStopClick = () => {
-      this.setState({
-        waiting: true,
-      }, () => {
-        this.playPromise = makeCancelable(onStopTask(task));
-        this.playPromise.promise
-          .then(() => {
-            this.setState({ waiting: false });
-          })
-          .catch(() => {
-            // there should be no errors happening here
-            // this promise is here to handle the spinner display
-          })
-      });
     }
 
     let total_ms = Math.floor((task.total_hours || 0) * 3600000);
@@ -173,57 +267,75 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
     }
     
     let total_time = moment.duration(total_ms, "ms").format()
+    if ( total_ms == 0 ) {
+      total_time = "--";
+    }
     let description = (task.description || "");
 
     return <Card 
         elevation={1} 
-        interactive 
         className={ classNames("task-list-item", { 
-          is_running: task.is_running 
-        }) } >
-      <div className="related">
-        <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={decodeHTML(task.project_label)} /> )}</div>
-        <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={decodeHTML(task.parent_label)} /> )}</div>
-      </div>
+          is_running: task.is_running,
+          expanded: this.state.expanded
+        }) } 
+      >
+      <ButtonGroup className="task-header" fill>
+        <Button 
+          minimal 
+          alignText={Alignment.LEFT} 
+          fill className="subject" 
+          text={decodeHTML(task.label)} 
+          onClick={handleOnClick} />
+        <TaskCommonActionsMenu 
+          task_id={ task.id } 
+          onOpenBrowser={handleOpenBrowser} 
+          icon="link"
+          buttonProps={{
+            minimal: true,
+            large: true
+          }}
+        />
+      </ButtonGroup>
+
       <div className="task-content">
         <div className="task-info">
-          <div className="subject">{decodeHTML(task.label)}</div>
           <div className="description">{decodeHTML(description.substring(0, 140))}</div>
-          <div className="elapsed-time">Running Time: <span className="measure">{total_time}</span></div>
-        </div>
-        <div className="actions">
-
-          { this.state.waiting && (
-            <Spinner size="30" />
-          ) }
-
-          { !this.state.waiting && (
-            <React.Fragment>
-
-              { task.is_running && (
-                <Button icon="stop" minimal large onClick={onStopClick} />
-              ) }
-
-              { !task.is_running && (
-                <Select
-                  resetOnClose
-                  resetOnQuery 
-                  resetOnSelect
-                  items={this.props.activities || []}
-                  itemPredicate={ActivityPredicate}
-                  itemRenderer={ActivityRenderer}
-                  noResults={<MenuItem disabled text="No Results." />}
-                  onItemSelect={onPlayClick}
-                >
-                  <Button icon="play" minimal large />
-                </Select>
-              ) }
-
-            </React.Fragment>
-          ) }
-
         </div>
       </div>
+
+      { waiting && (
+        <Button minimal large><Spinner size="24" /></Button>
+      ) }
+
+      { !waiting && (
+        <ButtonGroup className="task-tools" fill>
+          <TaskStatusSelect 
+            allStatuses={backend.actions.getAllTaskStatuses()}
+            status={task.status}
+            onChange={handleTaskStatusChangeClick} />
+          <Button icon="time" text={total_time} alignText={Alignment.LEFT} large minimal fill/>
+          <React.Fragment>
+            { task.is_running && (
+              <Button icon="stop" minimal large onClick={onStopClick} />
+            ) }
+
+            { !task.is_running && (
+              <Select
+                resetOnClose
+                resetOnQuery 
+                resetOnSelect
+                items={this.props.activities || []}
+                itemPredicate={ActivityPredicate}
+                itemRenderer={ActivityRenderer}
+                noResults={<MenuItem disabled text="No Results." />}
+                onItemSelect={onPlayClick}
+              >
+                <Button icon="play" minimal large />
+              </Select>
+            ) }
+          </React.Fragment>
+        </ButtonGroup>
+      ) }
       <div className="assigned">{
         (task.assigned_users || []).map((a) => (
           <UserAvatar key={`${task.id}.${a}`} user={a} fetchUser={(userId) => this.props.backend.actions.getUserDetails(userId)} />
@@ -231,6 +343,10 @@ export class TaskListItem extends React.Component<TaskListItemProps, TaskListIte
       }</div>
       <div className="tags">
         { tags }
+      </div>
+      <div className="related">
+        <div className="project-name">{ task.project_label && ( <Button minimal small icon="git-branch" text={decodeHTML(task.project_label)} /> )}</div>
+        <div className="parent">{ task.parent_label && ( <Button minimal small icon="bookmark" text={decodeHTML(task.parent_label)} /> )}</div>
       </div>
     </Card>
   }
@@ -257,6 +373,16 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     this._willUnmount = false;
     this.searchTimeout = false;
     this.prTimeoutID = false;
+
+    this.handlers = {
+      handleUpdateTasks: this.updateTasks.bind(this),
+      handleSearchChange: this.handleSearchChange.bind(this),
+      handleAssignedChange: this.handleAssignedChange.bind(this),
+      handleProjectsChange: this.handleProjectsChange.bind(this),
+      handleStatusFilterChange: this.handleStatusFilterChange.bind(this),
+      onStartTask: this.onStartTask.bind(this),
+      onStopTask: this.onStopTask.bind(this)
+    }
   }
 
   shouldComponentUpdate(newProps, newState) {
@@ -307,8 +433,6 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     return backend.actions.startTask(task, activity).then(() => {
       if ( this.state.onTimerStartGoto === 'timesheet' ) {
         this.props.nav("timesheet");
-      } else {
-        this.updateSearch(this.state.search);
       }
     })
   }
@@ -316,9 +440,7 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
   onStopTask(task : DataTypes.Task) : Promise<any> {
     const { backend } = this.props;
 
-    return backend.actions.stopTask(task)
-      .then(() => this.updateSearch(this.state.search));
-  
+    return backend.actions.stopTask(task);
   }
 
   sortTasks(tasks) {
@@ -365,6 +487,10 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     this.updateSearch(this.state.search);
   }
 
+  handleStatusFilterChange() : void {
+    this.updateSearch(this.state.search);
+  }
+
   updateSearch(filter : string, timeout : number = 800) : void {
 
     if ( this.searchTimeout ) {
@@ -377,10 +503,10 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     });
 
     const { backend } = this.props;
-    const { isProjectSelected, taskSearch } = backend.actions;
+    const { isProjectSelected, taskSearch, getTaskStatusFilters } = backend.actions;
 
     this.searchTimeout = setTimeout(() => {
-      return taskSearch(filter, this.state.assignedOnly?this.props.backend.user.id:"")
+      return taskSearch(filter, this.state.assignedOnly?this.props.backend.user.id:"", getTaskStatusFilters())
         .then((result) => {
           this.searchTimeout = false; 
           this.setState({
@@ -456,16 +582,15 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
 
   render() {
 
-    const handleSearchChange = (event : any) => this.handleSearchChange(event)
-    const handleAssignedChange = (event : any) => this.handleAssignedChange(event)
-    const handleProjectsChange = () => this.handleProjectsChange();
-
-    const onStartTask = (task : DataTypes.Task, activity : DataTypes.Activity) : Promise<any>  => {
-      return this.onStartTask(task, activity);
-    }
-    const onStopTask = (task : DataTypes.Task) : Promise<any> => {
-      return this.onStopTask(task);
-    }
+    const { 
+      handleUpdateTasks, 
+      handleSearchChange, 
+      handleAssignedChange, 
+      handleProjectsChange,
+      handleStatusFilterChange,
+      onStartTask,
+      onStopTask
+    } = this.handlers;
 
     let searchLeftIcon = "search";
     if ( this.state.searching ) {
@@ -475,7 +600,7 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
     return <div className="page page-tasks">
       <div className="page-title">Tasks</div>
       <div className="page-toolbar row">
-        <ControlGroup className="ctrl-flex col-md-6 col-sm-12">
+        <ControlGroup className="ctrl-flex col-md-4 col-sm-12">
           <InputGroup 
             fill
             autoFocus
@@ -485,18 +610,24 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
             placeholder="Search tasks..."
             onChange={handleSearchChange}
             />
+        </ControlGroup>
+        <ControlGroup className="ctrl-flex col-md-4 col-sm-6">
+          <ProjectFilter 
+            backend={this.props.backend} 
+            onChange={handleProjectsChange}
+            />
+        </ControlGroup>
+        <ControlGroup className="ctrl-flex col-md-4 col-sm-6">
+          <TaskStatusFilter
+            backend={this.props.backend}
+            onChange={handleStatusFilterChange}
+            />
           <Switch 
             large 
             className="ctrl-field ctrl-std ctrl-flex-static"
             checked={this.state.assignedOnly} 
             label="Assigned" 
             onChange={handleAssignedChange} />
-        </ControlGroup>
-        <ControlGroup className="ctrl-flex col-md-6 col-sm-12">
-          <ProjectFilter 
-            backend={this.props.backend} 
-            onChange={handleProjectsChange}
-            />
         </ControlGroup>
       </div>
       <div className="page-content">
@@ -508,7 +639,9 @@ export class TaskList extends React.Component<TaskListProps, TaskListState> {
                   backend={this.props.backend}
                   activities={this.props.backend.activities || []}
                   onStartTask={onStartTask}
-                  onStopTask={onStopTask} />
+                  onStopTask={onStopTask} 
+                  onTaskUpdated={handleUpdateTasks}
+                />
             )}
         </div>
       </div>

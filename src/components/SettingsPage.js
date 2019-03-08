@@ -11,7 +11,19 @@ import {
   GetSpecialKeyLabel 
 } from "./SpecialKeys";
 
-import { ButtonGroup, Button, ControlGroup, FormGroup, MenuItem, Tooltip, Icon, Intent, Position, Alignment } from "@blueprintjs/core";
+import { 
+  Switch, 
+  ButtonGroup, 
+  Button, 
+  ControlGroup, 
+  FormGroup, 
+  MenuItem, 
+  Tooltip, 
+  Icon, 
+  Intent, 
+  Position, 
+  Alignment 
+} from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import classNames from "classnames";
 import moment from "moment"
@@ -97,7 +109,8 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
       visibleToggleShortcutKey: null,
       validVisibilityShortcut: null,
       validVisibilityShortcutTooltip: "",
-      onTimerStartGoto: ""
+      onTimerStartGoto: "",
+      alwaysOnTop: false
     }
   }
 
@@ -105,7 +118,8 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     mainProcessAPI("getUserSettings", [
       "visibleToggleShortcutModifier", 
       "visibleToggleShortcutKey",
-      "onTimerStartGoto"
+      "onTimerStartGoto",
+      "alwaysOnTop"
     ])
     .then((result) => {
       this.setState({
@@ -187,11 +201,26 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
     })
   }
 
+  handleOnAlwaysOnTopChange(e) : void {
+    const checked = e.target.checked;
+    mainProcessAPI("setUserSettings", { "alwaysOnTop": checked})
+    .then((result) => {
+      this.setState({
+        alwaysOnTop: checked
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+    })
+  }
+
   render() : Node {
     const handleQuit = () => this.handleQuit();
     const handleLogout = () => this.handleLogout();
     const handleOnTimerStartGotoTimesheet = () => this.handleOnTimerStartGoto('timesheet');
     const handleOnTimerStartGotoTasks = () => this.handleOnTimerStartGoto('tasks');
+    const handleOnAlwaysOnTopChange = (e) => this.handleOnAlwaysOnTopChange(e);
+
     const { 
       visibleToggleShortcutModifier,
       visibleToggleShortcutKey,
@@ -290,6 +319,7 @@ export class Settings extends React.PureComponent<SettingsProps, SettingsState> 
                 active={this.state.onTimerStartGoto === 'tasks'} />
             </ButtonGroup>
           </FormGroup>
+          <Switch checked={this.state.alwaysOnTop} label="Always On Top" onChange={handleOnAlwaysOnTopChange} />
       </div>
     </div>
   }
